@@ -1,0 +1,73 @@
+src/components/auth/MobileLoginScreen.tsx(46,24): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/components/auth/MobileLoginScreen.tsx(66,176): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/components/auth/MobileLoginScreen.tsx(105,232): error TS17008: JSX element 'form' has no corresponding closing tag.
+src/components/auth/MobileLoginScreen.tsx(106,244): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/components/auth/MobileLoginScreen.tsx(107,258): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/components/auth/MobileLoginScreen.tsx(108,274): error TS17008: JSX element 'p' has no corresponding closing tag.
+src/components/auth/MobileLoginScreen.tsx(110,220): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(112,29): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(113,15): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(114,31): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(115,13): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(116,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(117,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(118,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(120,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(121,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(122,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/auth/MobileLoginScreen.tsx(122,2): error TS1005: '</' expected.
+src/components/common/PhotoUploader.tsx(51,27): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(52,9): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(53,1): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(54,1): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(54,2): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(55,1): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(56,943): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(56,944): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(57,819): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(57,820): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(58,711): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(58,712): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(59,635): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(59,636): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(60,617): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(60,618): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(61,545): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(62,515): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(62,516): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(63,501): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(64,501): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(64,502): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(65,475): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(65,476): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(66,13): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(67,23): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(68,9): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(68,10): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(69,1): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(70,1): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(70,2): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(71,1): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(72,1): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(73,1): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(74,7): error TS1128: Declaration or statement expected.
+src/components/common/PhotoUploader.tsx(75,1): error TS1128: Declaration or statement expected.
+src/types/index.ts(103,87): error TS1128: Declaration or statement expected.
+src/types/index.ts(104,87): error TS1128: Declaration or statement expected.
+src/types/index.ts(105,87): error TS1128: Declaration or statement expected.
+src/types/index.ts(106,87): error TS1128: Declaration or statement expected.
+src/types/index.ts(107,87): error TS1128: Declaration or statement expected.
+src/types/index.ts(108,87): error TS1128: Declaration or statement expected.
+src/types/index.ts(109,87): error TS1128: Declaration or statement expected.
+src/types/index.ts(110,49): error TS1128: Declaration or statement expected.
+src/types/index.ts(111,49): error TS1128: Declaration or statement expected.
+src/types/index.ts(112,55): error TS1128: Declaration or statement expected.
+src/types/index.ts(113,49): error TS1128: Declaration or statement expected.
+src/types/index.ts(114,53): error TS1128: Declaration or statement expected.
+src/types/index.ts(115,49): error TS1128: Declaration or statement expected.
+src/types/index.ts(116,75): error TS1128: Declaration or statement expected.
+src/types/index.ts(117,79): error TS1128: Declaration or statement expected.
+src/types/index.ts(118,69): error TS1128: Declaration or statement expected.
+src/types/index.ts(119,61): error TS1128: Declaration or statement expected.
+src/types/index.ts(120,55): error TS1128: Declaration or statement expected.
+src/types/index.ts(121,49): error TS1128: Declaration or statement expected.
