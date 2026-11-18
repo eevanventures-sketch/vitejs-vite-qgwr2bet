@@ -1,24 +1,30 @@
-export interface FirebaseEnvConfig {
-    apiKey?: string;
-      authDomain?: string;
-        projectId?: string;
-          storageBucket?: string;
-            messagingSenderId?: string;
-              appId?: string;
-}
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
-export function getFirebaseEnvConfig(): FirebaseEnvConfig {
-    return {
-          apiKey: import.meta.env.VITE_FIREBASE_API_KEY || undefined,
-              authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || undefined,
-                  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || undefined,
-                      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || undefined,
-                          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || undefined,
-                              appId: import.meta.env.VITE_FIREBASE_APP_ID || undefined,
-    };
-}
+const firebaseConfig = {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+            storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+              messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+                appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
 
 export function isFirebaseConfigured(): boolean {
-    const cfg = getFirebaseEnvConfig();
-      return Boolean(cfg.apiKey && cfg.projectId && cfg.appId);
+      return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
 }
+
+let app: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
+let dbInstance: Firestore | null = null;
+
+if (isFirebaseConfigured()) {
+      app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
+        authInstance = getAuth(app);
+          dbInstance = getFirestore(app);
+}
+
+export const auth = authInstance;
+export const db = dbInstance;
+export const googleProvider = new GoogleAuthProvider();
