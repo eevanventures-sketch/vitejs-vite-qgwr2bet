@@ -1,254 +1,275 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
-    AuthSession,
+      createUserWithEmailAndPassword,
+        onAuthStateChanged,
+          signInWithEmailAndPassword,
+            signInWithPopup,
+              signOut,
+                type User,
+} from 'firebase/auth';
+import {
+      addDoc,
+        collection,
+          doc,
+            getDoc,
+              onSnapshot,
+                query,
+                  setDoc,
+                    updateDoc,
+                      where,
+} from 'firebase/firestore';
+import { auth, db, googleProvider } from '../services/firebase';
+import type {
       Booking,
         BookingStatus,
-          CustomerProfile,
-            PartnerProfile,
+          PartnerProfile,
+            UserProfile,
               UserRole,
 } from '../types';
-import { DEMO_BOOKINGS } from '../data/demoBookings';
 
-interface PersistedState {
-    session: AuthSession;
-      selectedLocality: string;
-        customerProfile: CustomerProfile;
-          partnerProfile: PartnerProfile;
-            bookings: Booking[];
+interface CompleteProfileInput {
+      role: UserRole;
+        name: string;
+          phone: string;
+            defaultLocality: string;
+              defaultAddress: string;
 }
 
-const STORAGE_KEY = 'needzo_bhopal_demo_v1';
-
-const getInitialState = (): PersistedState => ({
-    session: {
-          isAuthenticated: false,
-              role: null,
-                  phone: '',
-    },
-      selectedLocality: 'Arera Colony',
-        customerProfile: {
-              name: 'Aarav Sharma (Demo)',
-                  phone: '9826000001',
-                      defaultLocality: 'Arera Colony',
-                          defaultAddress: 'E-4/112, Near Bittan Market, Arera Colony, Bhopal',
-        },
-          partnerProfile: {
-                id: 'PTR-DEMO-01',
-                    fullName: 'Ramesh Vishwakarma (Demo)',
-                        phone: '9826000099',
-                            professions: ['plumber', 'electrician'],
-                                serviceAreas: ['Arera Colony', 'MP Nagar', 'Shahpura', 'Kolar Road'],
-                                    experienceYears: 6,
-                                        bio: 'Experienced home technician serving South & Central Bhopal.',
-                                            isOnline: true,
-                                                isRegistered: false,
-                                                    isDemo: true,
-                                                        ratingDemo: 4.8,
-          },
-            bookings: DEMO_BOOKINGS,
-});
-
 interface AppContextValue {
-    session: AuthSession;
-      selectedLocality: string;
-        customerProfile: CustomerProfile;
-          partnerProfile: PartnerProfile;
-            bookings: Booking[];
-              selectRoleForLogin: (role: UserRole) => void;
-                loginWithDemoOtp: (phone: string, role: UserRole) => void;
-                  logout: () => void;
-                    switchRoleDemo: (role: UserRole) => void;
-                      setSelectedLocality: (locality: string) => void;
-                        updateCustomerProfile: (updates: Partial<CustomerProfile>) => void;
-                          savePartnerProfile: (updates: Partial<PartnerProfile>) => void;
-                            togglePartnerOnline: () => void;
-                              createBooking: (booking: Omit<Booking, 'id' | 'createdAt' | 'status' | 'isDemo'>) => Booking;
-                                updateBookingStatus: (bookingId: string, status: BookingStatus, assignPartner?: boolean) => void;
-                                  resetDemoData: () => void;
+      firebaseUser: User | null;
+        authLoading: boolean;
+          userProfile: UserProfile | null;
+            partnerProfile: PartnerProfile | null;
+              selectedLocality: string;
+                bookings: Booking[];
+                  setSelectedLocality: (loc: string) => void;
+                    signInWithGoogle: () => Promise<void>;
+                      signInWithEmail: (email: string, password: string) => Promise<void>;
+                        signUpWithEmail: (email: string, password: string) => Promise<void>;
+                          completeUserProfile: (data: CompleteProfileInput) => Promise<void>;
+                            updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
+                              savePartnerProfile: (data: Omit<PartnerProfile, 'uid' | 'isOnline' | 'isRegistered' | 'createdAtMs'>) => Promise<void>;
+                                togglePartnerOnline: () => Promise<void>;
+                                  createBooking: (input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>) => Promise<Booking>;
+                                    acceptBooking: (bookingId: string) => Promise<void>;
+                                      updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+                                        signOutUser: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [state, setState] = useState<PersistedState>(() => {
-          try {
-                  const raw = localStorage.getItem(STORAGE_KEY);
-                        if (!raw) return getInitialState();
-                              const parsed = JSON.parse(raw) as PersistedState;
-                                    return { ...getInitialState(), ...parsed };
-          } catch {
-                  return getInitialState();
-          }
-    });
+      const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+        const [authLoading, setAuthLoading] = useState(true);
+          const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+            const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
+              const [selectedLocality, setSelectedLocality] = useState('Arera Colony');
+                const [bookings, setBookings] = useState<Booking[]>([]);
 
-      useEffect(() => {
-            try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-            } catch {
-                    // Ignore storage quota errors
-            }
-      }, [state]);
+                  useEffect(() => {
+                        if (!auth || !db) {
+                                  setAuthLoading(false);
+                                        return;
+                        }
+                            const firestore = db;
+                                const unsub = onAuthStateChanged(auth, async (user) => {
+                                          setFirebaseUser(user);
+                                                if (!user) {
+                                                            setUserProfile(null);
+                                                                    setPartnerProfile(null);
+                                                                            setBookings([]);
+                                                                                    setAuthLoading(false);
+                                                                                            return;
+                                                }
+                                                      try {
+                                                                const userSnap = await getDoc(doc(firestore, 'users', user.uid));
+                                                                        if (userSnap.exists()) {
+                                                                                      const prof = userSnap.data() as UserProfile;
+                                                                                                setUserProfile(prof);
+                                                                                                          if (prof.defaultLocality) setSelectedLocality(prof.defaultLocality);
+                                                                                                                    if (prof.role === 'partner') {
+                                                                                                                                    const pSnap = await getDoc(doc(firestore, 'partners', user.uid));
+                                                                                                                                                setPartnerProfile(pSnap.exists() ? (pSnap.data() as PartnerProfile) : null);
+                                                                                                                    } else {
+                                                                                                                                    setPartnerProfile(null);
+                                                                                                                    }
+                                                                        } else {
+                                                                                      setUserProfile(null);
+                                                                                                setPartnerProfile(null);
+                                                                        }
+                                                      } catch {
+                                                                setUserProfile(null);
+                                                      } finally {
+                                                                setAuthLoading(false);
+                                                      }
+                                });
+                                    return () => unsub();
+                  }, []);
 
-        const selectRoleForLogin = (role: UserRole) => {
-              setState((prev) => ({
-                      ...prev,
-                            session: { ...prev.session, role },
-              }));
-        };
+                    useEffect(() => {
+                            if (!db || !firebaseUser || !userProfile) {
+                                      setBookings([]);
+                                            return;
+                            }
+                                const firestore = db;
+                                    if (userProfile.role === 'customer') {
+                                              const q = query(collection(firestore, 'bookings'), where('customerId', '==', firebaseUser.uid));
+                                                    return onSnapshot(q, (snap) => {
+                                                                const list = snap.docs
+                                                                          .map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) }))
+                                                                                    .sort((a, b) => b.createdAtMs - a.createdAtMs);
+                                                                                            setBookings(list);
+                                                    });
+                                    }
 
-          const loginWithDemoOtp = (phone: string, role: UserRole) => {
-                setState((prev) => ({
-                        ...prev,
-                              session: {
-                                        isAuthenticated: true,
-                                                role,
-                                                        phone,
-                              },
-                                    customerProfile:
-                                            role === 'customer'
-                                                      ? { ...prev.customerProfile, phone }
-                                                                : prev.customerProfile,
-                                                                      partnerProfile:
-                                                                              role === 'partner'
-                                                                                        ? { ...prev.partnerProfile, phone }
-                                                                                                  : prev.partnerProfile,
-                }));
-          };
+                                        let pendingList: Booking[] = [];
+                                            let mineList: Booking[] = [];
+                                                const syncMerged = () => {
+                                                          const map = new Map<string, Booking>();
+                                                                for (const b of pendingList) map.set(b.id, b);
+                                                                      for (const b of mineList) map.set(b.id, b);
+                                                                            const merged = Array.from(map.values()).sort((a, b) => {
+                                                                                        if (a.isEmergency !== b.isEmergency) return a.isEmergency ? -1 : 1;
+                                                                                                return b.createdAtMs - a.createdAtMs;
+                                                                            });
+                                                                                  setBookings(merged);
+                                                };
 
-            const logout = () => {
-                  setState((prev) => ({
-                          ...prev,
-                                session: {
-                                          isAuthenticated: false,
-                                                  role: null,
-                                                          phone: '',
-                                },
-                  }));
-            };
+                                                    const qPending = query(collection(firestore, 'bookings'), where('status', '==', 'pending'));
+                                                        const qMine = query(collection(firestore, 'bookings'), where('partnerId', '==', firebaseUser.uid));
 
-              const switchRoleDemo = (role: UserRole) => {
-                    setState((prev) => ({
-                            ...prev,
-                                  session: {
-                                            ...prev.session,
-                                                    isAuthenticated: true,
-                                                            role,
-                                  },
-                    }));
-              };
+                                                            const unsub1 = onSnapshot(qPending, (snap) => {
+                                                                      pendingList = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) }));
+                                                                            syncMerged();
+                                                            });
+                                                                const unsub2 = onSnapshot(qMine, (snap) => {
+                                                                          mineList = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) }));
+                                                                                syncMerged();
+                                                                });
+                                                                    return () => {
+                                                                              unsub1();
+                                                                                    unsub2();
+                                                                    };
+                    }, [firebaseUser, userProfile]);
 
-                const setSelectedLocality = (locality: string) => {
-                      setState((prev) => ({
-                              ...prev,
-                                    selectedLocality: locality,
-                                          customerProfile: {
-                                                    ...prev.customerProfile,
-                                                            defaultLocality: locality,
-                                          },
-                      }));
-                };
-
-                  const updateCustomerProfile = (updates: Partial<CustomerProfile>) => {
-                        setState((prev) => ({
-                                ...prev,
-                                      customerProfile: { ...prev.customerProfile, ...updates },
-                        }));
-                  };
-
-                    const savePartnerProfile = (updates: Partial<PartnerProfile>) => {
-                          setState((prev) => ({
-                                  ...prev,
-                                        partnerProfile: {
-                                                  ...prev.partnerProfile,
-                                                          ...updates,
-                                                                  isRegistered: true,
-                                        },
-                          }));
-                    };
-
-                      const togglePartnerOnline = () => {
-                            setState((prev) => ({
-                                    ...prev,
-                                          partnerProfile: {
-                                                    ...prev.partnerProfile,
-                                                            isOnline: !prev.partnerProfile.isOnline,
-                                          },
-                            }));
+                      const signInWithGoogle = async () => {
+                            if (!auth) throw new Error('Firebase is not configured.');
+                                await signInWithPopup(auth, googleProvider);
                       };
 
-                        const createBooking = (
-                              input: Omit<Booking, 'id' | 'createdAt' | 'status' | 'isDemo'>
-                        ): Booking => {
-                              const randomCode = Math.floor(2000 + Math.random() * 7999);
-                                  const newBooking: Booking = {
-                                          ...input,
-                                                id: `NDZ-DEMO-${randomCode}`,
-                                                      createdAt: new Date().toISOString(),
-                                                            status: 'pending',
-                                                                  isDemo: true,
-                                  };
-
-                                      setState((prev) => ({
-                                              ...prev,
-                                                    bookings: [newBooking, ...prev.bookings],
-                                      }));
-
-                                          return newBooking;
+                        const signInWithEmail = async (email: string, password: string) => {
+                                if (!auth) throw new Error('Firebase is not configured.');
+                                    await signInWithEmailAndPassword(auth, email, password);
                         };
 
-                          const updateBookingStatus = (
-                                bookingId: string,
-                                    status: BookingStatus,
-                                        assignPartner = false
-                          ) => {
-                                setState((prev) => ({
-                                        ...prev,
-                                              bookings: prev.bookings.map((b) => {
-                                                        if (b.id !== bookingId) return b;
-                                                                return {
-                                                                            ...b,
-                                                                                      status,
-                                                                                                partnerId: assignPartner ? prev.partnerProfile.id : b.partnerId,
-                                                                                                          partnerName: assignPartner ? prev.partnerProfile.fullName : b.partnerName,
-                                                                };
-                                              }),
-                                }));
+                          const signUpWithEmail = async (email: string, password: string) => {
+                                if (!auth) throw new Error('Firebase is not configured.');
+                                    await createUserWithEmailAndPassword(auth, email, password);
                           };
 
-                            const resetDemoData = () => {
-                                  const fresh = getInitialState();
-                                      setState(fresh);
-                                          localStorage.removeItem(STORAGE_KEY);
+                            const completeUserProfile = async (data: CompleteProfileInput) => {
+                                    if (!db || !firebaseUser) throw new Error('Not signed in.');
+                                        const profile: UserProfile = {
+                                                  uid: firebaseUser.uid,
+                                                        email: firebaseUser.email || '',
+                                                              role: data.role,
+                                                                    name: data.name,
+                                                                          phone: data.phone,
+                                                                                defaultLocality: data.defaultLocality,
+                                                                                      defaultAddress: data.defaultAddress,
+                                                                                            createdAtMs: Date.now(),
+                                        };
+                                            await setDoc(doc(db, 'users', firebaseUser.uid), profile);
+                                                setUserProfile(profile);
+                                                    setSelectedLocality(data.defaultLocality);
                             };
 
-                              return (
-                                    <AppContext.Provider
-                                          value={{
-                                                    session: state.session,
-                                                            selectedLocality: state.selectedLocality,
-                                                                    customerProfile: state.customerProfile,
-                                                                            partnerProfile: state.partnerProfile,
-                                                                                    bookings: state.bookings,
-                                                                                            selectRoleForLogin,
-                                                                                                    loginWithDemoOtp,
-                                                                                                            logout,
-                                                                                                                    switchRoleDemo,
-                                                                                                                            setSelectedLocality,
-                                                                                                                                    updateCustomerProfile,
-                                                                                                                                            savePartnerProfile,
-                                                                                                                                                    togglePartnerOnline,
-                                                                                                                                                            createBooking,
-                                                                                                                                                                    updateBookingStatus,
-                                                                                                                                                                            resetDemoData,
-                                          }}
-                                              >
-                                                    {children}
-                                                        </AppContext.Provider>
-                              );
+                              const updateUserProfile = async (updates: Partial<UserProfile>) => {
+                                    if (!db || !firebaseUser || !userProfile) return;
+                                        await updateDoc(doc(db, 'users', firebaseUser.uid), updates);
+                                            setUserProfile({ ...userProfile, ...updates });
+                              };
+
+                                const savePartnerProfile = async (
+                                        data: Omit<PartnerProfile, 'uid' | 'isOnline' | 'isRegistered' | 'createdAtMs'>
+                                ) => {
+                                        if (!db || !firebaseUser) throw new Error('Not signed in.');
+                                            const next: PartnerProfile = {
+                                                      uid: firebaseUser.uid,
+                                                            ...data,
+                                                                  isOnline: partnerProfile?.isOnline ?? true,
+                                                                        isRegistered: true,
+                                                                              createdAtMs: partnerProfile?.createdAtMs ?? Date.now(),
+                                            };
+                                                await setDoc(doc(db, 'partners', firebaseUser.uid), next, { merge: true });
+                                                    setPartnerProfile(next);
+                                };
+
+                                  const togglePartnerOnline = async () => {
+                                        if (!db || !firebaseUser || !partnerProfile) return;
+                                            const nextVal = !partnerProfile.isOnline;
+                                                await updateDoc(doc(db, 'partners', firebaseUser.uid), { isOnline: nextVal });
+                                                    setPartnerProfile({ ...partnerProfile, isOnline: nextVal });
+                                  };
+
+                                    const createBooking = async (
+                                            input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>
+                                    ): Promise<Booking> => {
+                                            if (!db) throw new Error('Firestore not ready.');
+                                                const payload = { ...input, status: 'pending' as BookingStatus, createdAtMs: Date.now() };
+                                                    const docRef = await addDoc(collection(db, 'bookings'), payload);
+                                                        return { id: docRef.id, ...payload };
+                                    };
+
+                                      const acceptBooking = async (bookingId: string) => {
+                                            if (!db || !firebaseUser || !partnerProfile) return;
+                                                await updateDoc(doc(db, 'bookings', bookingId), {
+                                                          status: 'accepted',
+                                                                partnerId: firebaseUser.uid,
+                                                                      partnerName: partnerProfile.fullName,
+                                                                            partnerPhone: partnerProfile.phone,
+                                                });
+                                      };
+
+                                        const updateBookingStatus = async (bookingId: string, status: BookingStatus) => {
+                                                if (!db) return;
+                                                    await updateDoc(doc(db, 'bookings', bookingId), { status });
+                                        };
+
+                                          const signOutUser = async () => {
+                                                if (auth) await signOut(auth);
+                                          };
+
+                                            return (
+                                                    <AppContext.Provider
+                                                          value={{
+                                                                    firebaseUser,
+                                                                            authLoading,
+                                                                                    userProfile,
+                                                                                            partnerProfile,
+                                                                                                    selectedLocality,
+                                                                                                            bookings,
+                                                                                                                    setSelectedLocality,
+                                                                                                                            signInWithGoogle,
+                                                                                                                                    signInWithEmail,
+                                                                                                                                            signUpWithEmail,
+                                                                                                                                                    completeUserProfile,
+                                                                                                                                                            updateUserProfile,
+                                                                                                                                                                    savePartnerProfile,
+                                                                                                                                                                            togglePartnerOnline,
+                                                                                                                                                                                    createBooking,
+                                                                                                                                                                                            acceptBooking,
+                                                                                                                                                                                                    updateBookingStatus,
+                                                                                                                                                                                                            signOutUser,
+                                                          }}
+                                                              >
+                                                                    {children}
+                                                                        </AppContext.Provider>
+                                            );
 };
 
 export function useApp(): AppContextValue {
-    const ctx = useContext(AppContext);
-      if (!ctx) throw new Error('useApp must be used inside AppProvider');
-        return ctx;
+      const ctx = useContext(AppContext);
+        if (!ctx) throw new Error('useApp must be used inside AppProvider');
+          return ctx;
 }
