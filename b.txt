@@ -1,262 +1,440 @@
 
-===F: src/services/firebase.ts===
-import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+===F: src/services/capacitor.ts===
+import type { Booking } from '../types';
 
-const firebaseConfig = {
-      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-            storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-              messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-                appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-export function isFirebaseConfigured(): boolean {
-      return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
+export function isNativeAndroid(): boolean {
+      const win = window as unknown as { Capacitor?: { getPlatform?: () => string } };
+        return win.Capacitor?.getPlatform?.() === 'android';
 }
 
-let app: FirebaseApp | null = null;
-let authInstance: Auth | null = null;
-let dbInstance: Firestore | null = null;
-
-if (isFirebaseConfigured()) {
-      app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
-        authInstance = getAuth(app);
-          dbInstance = getFirestore(app);
+export function getPlatformLabel(): string {
+      return isNativeAndroid() ? 'NEEDZO Android App' : 'NEEDZO India Web App';
 }
 
-export const auth = authInstance;
-export const db = dbInstance;
-export const googleProvider = new GoogleAuthProvider();
-===F: src/data/bhopalLocalities.ts===
-export interface BhopalLocality {
-      name: string;
-        zone: string;
-          pinCode: string;
-            lat: number;
-              lng: number;
-}
-
-export const BHOPAL_LOCALITIES: BhopalLocality[] = [
-      { name: 'Arera Colony', zone: 'South Bhopal', pinCode: '462016', lat: 23.2167, lng: 77.4344 },
-        { name: 'MP Nagar', zone: 'Central Bhopal', pinCode: '462011', lat: 23.2332, lng: 77.4343 },
-          { name: 'Kolar Road', zone: 'South Bhopal', pinCode: '462042', lat: 23.1756, lng: 77.4167 },
-            { name: 'Shahpura', zone: 'South Bhopal', pinCode: '462039', lat: 23.1964, lng: 77.4244 },
-              { name: 'Habibganj / Rani Kamalapati', zone: 'South-Central', pinCode: '462016', lat: 23.2294, lng: 77.4391 },
-                { name: 'New Market / TT Nagar', zone: 'Central Bhopal', pinCode: '462003', lat: 23.2367, lng: 77.3999 },
-                  { name: 'Bawadiya Kalan', zone: 'South Bhopal', pinCode: '462026', lat: 23.1869, lng: 77.4418 },
-                    { name: 'Gulmohar Colony', zone: 'South Bhopal', pinCode: '462039', lat: 23.1912, lng: 77.4326 },
-                      { name: 'Indrapuri', zone: 'BHEL Zone', pinCode: '462022', lat: 23.2496, lng: 77.4651 },
-                        { name: 'Ashoka Garden', zone: 'East Bhopal', pinCode: '462023', lat: 23.2572, lng: 77.4368 },
-                          { name: 'Ayodhya Bypass', zone: 'North-East Bhopal', pinCode: '462041', lat: 23.2756, lng: 77.4563 },
-                            { name: 'Bairagarh (Sant Hirdaram Nagar)', zone: 'West Bhopal', pinCode: '462030', lat: 23.2683, lng: 77.3389 },
-                              { name: 'Kohefiza', zone: 'West-Central', pinCode: '462001', lat: 23.2647, lng: 77.3812 },
-                                { name: 'Misrod / Hoshangabad Road', zone: 'South-East', pinCode: '462026', lat: 23.1726, lng: 77.4631 },
-                                  { name: 'Karond', zone: 'North Bhopal', pinCode: '462038', lat: 23.2961, lng: 77.4027 },
-];
-
-export function findNearestBhopalLocality(lat: number, lng: number): BhopalLocality {
-      let closest = BHOPAL_LOCALITIES[0];
-        let minDist = Infinity;
-          for (const loc of BHOPAL_LOCALITIES) {
-                const d = (loc.lat - lat) ** 2 + (loc.lng - lng) ** 2;
-                    if (d < minDist) {
-                              minDist = d;
-                                    closest = loc;
-                    }
+export async function shareNeedzoApp(): Promise<'shared' | 'copied'> {
+      const url = 'https://needzo-bhopal.eevanventures.workers.dev';
+        const text = 'NEEDZO – Har Zaroorat Ka Solution! Book trusted plumbers, electricians, AC repair, tutors, cooks & more across India:';
+          if (typeof navigator !== 'undefined' && navigator.share) {
+                try {
+                          await navigator.share({ title: 'NEEDZO', text, url });
+                                return 'shared';
+                } catch {
+                          // Fallback to clipboard
+                }
           }
-            return closest;
-}
-===F: src/components/customer/ServiceDetailBooking.tsx===
-import React, { useState } from 'react';
-import { AlertTriangle, ArrowLeft, Calendar, CheckCircle2, Clock, Loader2, MapPin } from 'lucide-react';
-import type { Booking, GpsCoords, ServiceItem, UploadedPhoto, UserProfile } from '../../types';
-import { BHOPAL_LOCALITIES } from '../../data/bhopalLocalities';
-import { CategoryIcon } from '../common/CategoryIcon';
-import { PhotoUploader } from '../common/PhotoUploader';
-
-interface ServiceDetailBookingProps {
-      service: ServiceItem;
-        initialEmergency: boolean;
-          selectedLocality: string;
-            gpsCoords: GpsCoords | null;
-              userProfile: UserProfile;
-                onBack: () => void;
-                  onSubmitBooking: (data: Omit<Booking, 'id' | 'status' | 'createdAtMs'>) => Promise<void>;
+            if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    await navigator.clipboard.writeText(text + ' ' + url);
+            }
+              return 'copied';
 }
 
-const TIME_SLOTS = [
-      '08:00 AM - 10:00 AM',
-        '10:00 AM - 12:00 PM',
-          '12:00 PM - 02:00 PM',
-            '02:00 PM - 04:00 PM',
-              '04:00 PM - 06:00 PM',
-                '06:00 PM - 08:00 PM',
-];
+export function getGoogleMapsUrl(booking: Booking): string {
+      if (booking.gpsCoords) {
+            return `https://www.google.com/maps/dir/?api=1&destination=${booking.gpsCoords.lat},${booking.gpsCoords.lng}`;
+      }
+        const q = [booking.fullAddress, booking.locality, booking.city || 'Bhopal', booking.pinCode, 'India']
+            .filter(Boolean)
+                .join(', ');
+                  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+}
 
-export const ServiceDetailBooking: React.FC<ServiceDetailBookingProps> = ({
-      service,
-        initialEmergency,
-          selectedLocality,
-            gpsCoords,
-              userProfile,
-                onBack,
-                  onSubmitBooking,
-}) => {
-      const todayStr = new Date().toISOString().split('T')[0];
-        const [isEmergency, setIsEmergency] = useState(initialEmergency);
-          const [problemDescription, setProblemDescription] = useState('');
-            const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
-              const [locality, setLocality] = useState(selectedLocality);
-                const [fullAddress, setFullAddress] = useState(userProfile.defaultAddress);
-                  const [preferredDate, setPreferredDate] = useState(todayStr);
-                    const [preferredSlot, setPreferredSlot] = useState(initialEmergency ? 'Urgent / Earliest Available' : TIME_SLOTS[1]);
-                      const [submitting, setSubmitting] = useState(false);
-                        const [error, setError] = useState<string | null>(null);
+export function isAdminEmail(email?: string | null): boolean {
+      if (!email) return false;
+        const norm = email.trim().toLowerCase();
+          const envAdmins = (import.meta.env.VITE_ADMIN_EMAILS || '')
+              .split(',')
+                  .map((e: string) => e.trim().toLowerCase())
+                      .filter(Boolean);
+                        return envAdmins.includes(norm) || ['dev.rgu201@gmail.com', 'eevanventures@gmail.com'].includes(norm);
+}
+===F: src/context/AppContext.tsx===
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+      createUserWithEmailAndPassword,
+        onAuthStateChanged,
+          signInWithEmailAndPassword,
+            signInWithPopup,
+              signOut,
+                type User,
+} from 'firebase/auth';
+import {
+      addDoc,
+        collection,
+          doc,
+            getDoc,
+              getDocs,
+                onSnapshot,
+                  query,
+                    setDoc,
+                      updateDoc,
+                        where,
+} from 'firebase/firestore';
+import { auth, db, googleProvider } from '../services/firebase';
+import { isAdminEmail } from '../services/capacitor';
+import type {
+      Booking,
+        BookingStatus,
+          PartnerProfile,
+            UserProfile,
+              UserRole,
+} from '../types';
 
-                          const handleSubmit = async (e: React.FormEvent) => {
-                                e.preventDefault();
-                                    setError(null);
-                                        if (problemDescription.trim().length < 10) return setError('Please describe the problem in at least 10 characters.');
-                                            if (fullAddress.trim().length < 6) return setError('Please enter your complete Bhopal house/flat address.');
-                                                if (!preferredDate) return setError('Please choose a preferred date.');
+interface CompleteProfileInput {
+      role: UserRole;
+        name: string;
+          phone: string;
+            defaultCity: string;
+              defaultLocality: string;
+                defaultPinCode?: string;
+                  defaultAddress: string;
+}
 
-                                                    setSubmitting(true);
-                                                        try {
-                                                                  await onSubmitBooking({
-                                                                            customerId: userProfile.uid,
-                                                                                    customerName: userProfile.name,
-                                                                                            customerPhone: userProfile.phone,
-                                                                                                    categoryId: service.categoryId,
-                                                                                                            serviceId: service.id,
-                                                                                                                    serviceTitle: service.title,
-                                                                                                                            isCustomRequest: false,
-                                                                                                                                    isEmergency,
-                                                                                                                                            problemDescription: problemDescription.trim(),
-                                                                                                                                                    photos,
-                                                                                                                                                            locality,
-                                                                                                                                                                    fullAddress: fullAddress.trim(),
-                                                                                                                                                                            gpsCoords,
-                                                                                                                                                                                    preferredDate,
-                                                                                                                                                                                            preferredSlot: isEmergency ? 'Urgent / Earliest Available' : preferredSlot,
-                                                                                                                                                                                                    estimatedAmount: service.startingVisitFee,
-                                                                  });
-                                                        } catch {
-                                                                  setError('Could not submit booking. Please check internet connection and try again.');
-                                                        } finally {
-                                                                  setSubmitting(false);
-                                                        }
+export interface AdminSnapshot {
+      users: UserProfile[];
+        partners: PartnerProfile[];
+          bookings: Booking[];
+}
+
+interface AppContextValue {
+      firebaseUser: User | null;
+        authLoading: boolean;
+          isAdmin: boolean;
+            userProfile: UserProfile | null;
+              partnerProfile: PartnerProfile | null;
+                selectedCity: string;
+                  selectedLocality: string;
+                    selectedPinCode: string;
+                      bookings: Booking[];
+                        setSelectedCity: (city: string) => void;
+                          setSelectedLocality: (loc: string) => void;
+                            setSelectedPinCode: (pin: string) => void;
+                              signInWithGoogle: () => Promise<void>;
+                                signInWithEmail: (email: string, password: string) => Promise<void>;
+                                  signUpWithEmail: (email: string, password: string) => Promise<void>;
+                                    completeUserProfile: (data: CompleteProfileInput) => Promise<void>;
+                                      updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
+                                        savePartnerProfile: (data: Omit<PartnerProfile, 'uid' | 'isOnline' | 'isRegistered' | 'createdAtMs'>) => Promise<void>;
+                                          togglePartnerOnline: () => Promise<void>;
+                                            createBooking: (input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>) => Promise<Booking>;
+                                              acceptBooking: (bookingId: string) => Promise<void>;
+                                                updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+                                                  loadAdminSnapshot: () => Promise<AdminSnapshot>;
+                                                    signOutUser: () => Promise<void>;
+}
+
+const AppContext = createContext<AppContextValue | null>(null);
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+      const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+        const [authLoading, setAuthLoading] = useState(true);
+          const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+            const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
+              const [selectedCity, setSelectedCity] = useState('Bhopal');
+                const [selectedLocality, setSelectedLocality] = useState('Arera Colony');
+                  const [selectedPinCode, setSelectedPinCode] = useState('');
+                    const [bookings, setBookings] = useState<Booking[]>([]);
+
+                      useEffect(() => {
+                            if (!auth || !db) {
+                                      setAuthLoading(false);
+                                            return;
+                            }
+                                const firestore = db;
+                                    const unsub = onAuthStateChanged(auth, async (user) => {
+                                              setFirebaseUser(user);
+                                                    if (!user) {
+                                                                setUserProfile(null);
+                                                                        setPartnerProfile(null);
+                                                                                setBookings([]);
+                                                                                        setAuthLoading(false);
+                                                                                                return;
+                                                    }
+                                                          try {
+                                                                    const userSnap = await getDoc(doc(firestore, 'users', user.uid));
+                                                                            if (userSnap.exists()) {
+                                                                                          const prof = userSnap.data() as UserProfile;
+                                                                                                    const normalizedProf: UserProfile = {
+                                                                                                                    ...prof,
+                                                                                                                                defaultCity: prof.defaultCity || 'Bhopal',
+                                                                                                    };
+                                                                                                              setUserProfile(normalizedProf);
+                                                                                                                        setSelectedCity(normalizedProf.defaultCity);
+                                                                                                                                  if (normalizedProf.defaultLocality) setSelectedLocality(normalizedProf.defaultLocality);
+                                                                                                                                            if (normalizedProf.defaultPinCode) setSelectedPinCode(normalizedProf.defaultPinCode);
+                                                                                                                                                      if (normalizedProf.role === 'partner') {
+                                                                                                                                                                    const pSnap = await getDoc(doc(firestore, 'partners', user.uid));
+                                                                                                                                                                                if (pSnap.exists()) {
+                                                                                                                                                                                                  const pData = pSnap.data() as PartnerProfile;
+                                                                                                                                                                                                                setPartnerProfile({ ...pData, city: pData.city || normalizedProf.defaultCity });
+                                                                                                                                                                                } else {
+                                                                                                                                                                                                  setPartnerProfile(null);
+                                                                                                                                                                                }
+                                                                                                                                                      } else {
+                                                                                                                                                                    setPartnerProfile(null);
+                                                                                                                                                      }
+                                                                            } else {
+                                                                                          setUserProfile(null);
+                                                                                                    setPartnerProfile(null);
+                                                                            }
+                                                          } catch {
+                                                                    setUserProfile(null);
+                                                          } finally {
+                                                                    setAuthLoading(false);
+                                                          }
+                                    });
+                                        return () => unsub();
+                      }, []);
+
+                        useEffect(() => {
+                                if (!db || !firebaseUser || !userProfile) {
+                                          setBookings([]);
+                                                return;
+                                }
+                                    const firestore = db;
+                                        if (userProfile.role === 'customer') {
+                                                  const q = query(collection(firestore, 'bookings'), where('customerId', '==', firebaseUser.uid));
+                                                        return onSnapshot(q, (snap) => {
+                                                                    const list = snap.docs
+                                                                              .map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) }))
+                                                                                        .sort((a, b) => b.createdAtMs - a.createdAtMs);
+                                                                                                setBookings(list);
+                                                        });
+                                        }
+
+                                            let pendingList: Booking[] = [];
+                                                let mineList: Booking[] = [];
+                                                    const syncMerged = () => {
+                                                              const map = new Map<string, Booking>();
+                                                                    for (const b of pendingList) map.set(b.id, b);
+                                                                          for (const b of mineList) map.set(b.id, b);
+                                                                                const merged = Array.from(map.values()).sort((a, b) => {
+                                                                                            if (a.isEmergency !== b.isEmergency) return a.isEmergency ? -1 : 1;
+                                                                                                    return b.createdAtMs - a.createdAtMs;
+                                                                                });
+                                                                                      setBookings(merged);
+                                                    };
+
+                                                        const qPending = query(collection(firestore, 'bookings'), where('status', '==', 'pending'));
+                                                            const qMine = query(collection(firestore, 'bookings'), where('partnerId', '==', firebaseUser.uid));
+
+                                                                const unsub1 = onSnapshot(qPending, (snap) => {
+                                                                          pendingList = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) }));
+                                                                                syncMerged();
+                                                                });
+                                                                    const unsub2 = onSnapshot(qMine, (snap) => {
+                                                                              mineList = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) }));
+                                                                                    syncMerged();
+                                                                    });
+                                                                        return () => {
+                                                                                  unsub1();
+                                                                                        unsub2();
+                                                                        };
+                        }, [firebaseUser, userProfile]);
+
+                          const signInWithGoogle = async () => {
+                                if (!auth) throw new Error('Firebase is not configured.');
+                                    await signInWithPopup(auth, googleProvider);
                           };
 
-                            return (
-                                    <div className="flex-1 flex flex-col bg-slate-50 pb-6 safe-top">
-                                          <header className="sticky top-0 z-20 bg-navy-800 text-white px-4 py-3.5 flex items-center gap-3 shadow-sm">
-                                                  <button type="button" onClick={onBack} aria-label="Go back" className="p-1.5 rounded-lg hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
-                                                          <div className="min-w-0">
-                                                                    <h1 className="text-sm font-bold truncate">{service.title}</h1>
-                                                                              <p className="text-[11px] text-teal-300">Bhopal Service Booking</p>
-                                                                                      </div>
-                                                                                            </header>
+                            const signInWithEmail = async (email: string, password: string) => {
+                                    if (!auth) throw new Error('Firebase is not configured.');
+                                        await signInWithEmailAndPassword(auth, email, password);
+                            };
 
-                                                                                                  <form onSubmit={(e) => void handleSubmit(e)} className="p-4 space-y-4">
-                                                                                                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm">
-                                                                                                                    <div className="flex items-start gap-3">
-                                                                                                                                <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shrink-0"><CategoryIcon categoryId={service.categoryId} className="w-6 h-6" /></div>
-                                                                                                                                            <div className="flex-1">
-                                                                                                                                                          <div className="flex items-center justify-between gap-2">
-                                                                                                                                                                          <h2 className="text-base font-bold text-navy-800">{service.title}</h2>
-                                                                                                                                                                                          <span className="text-sm font-extrabold text-teal-700">₹{service.startingVisitFee}</span>
-                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                      <p className="text-xs text-slate-600 mt-1">{service.description}</p>
-                                                                                                                                                                                                                                  </div>
-                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                      <div className="border-t border-slate-100 pt-3 space-y-1.5">
-                                                                                                                                                                                                                                                                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">What's Included</p>
-                                                                                                                                                                                                                                                                              {service.includes.map((item) => (
-                                                                                                                                                                                                                                                                                              <div key={item} className="flex items-center gap-2 text-xs text-slate-700"><CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" /><span>{item}</span></div>
-                                                                                                                                                                                                                                                                              ))}
-                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                </div>
+                              const signUpWithEmail = async (email: string, password: string) => {
+                                    if (!auth) throw new Error('Firebase is not configured.');
+                                        await createUserWithEmailAndPassword(auth, email, password);
+                              };
 
-                                                                                                                                                                                                                                                                                                        <label className="flex items-center justify-between p-3.5 rounded-2xl border border-rose-200 bg-rose-50/70 cursor-pointer">
-                                                                                                                                                                                                                                                                                                                  <div className="flex items-center gap-2.5">
-                                                                                                                                                                                                                                                                                                                              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-                                                                                                                                                                                                                                                                                                                                          <div><p className="text-xs font-bold text-navy-800">Mark as Emergency Booking</p><p className="text-[11px] text-slate-600">Prioritizes urgent attention from Bhopal partners</p></div>
-                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                              <input type="checkbox" checked={isEmergency} onChange={(e) => setIsEmergency(e.target.checked)} className="w-5 h-5 accent-rose-600 rounded" />
-                                                                                                                                                                                                                                                                                                                                                                      </label>
+                                const completeUserProfile = async (data: CompleteProfileInput) => {
+                                        if (!db || !firebaseUser) throw new Error('Not signed in.');
+                                            const profile: UserProfile = {
+                                                      uid: firebaseUser.uid,
+                                                            email: firebaseUser.email || '',
+                                                                  role: data.role,
+                                                                        name: data.name,
+                                                                              phone: data.phone,
+                                                                                    defaultCity: data.defaultCity,
+                                                                                          defaultLocality: data.defaultLocality,
+                                                                                                defaultPinCode: data.defaultPinCode || '',
+                                                                                                      defaultAddress: data.defaultAddress,
+                                                                                                            createdAtMs: Date.now(),
+                                            };
+                                                await setDoc(doc(db, 'users', firebaseUser.uid), profile);
+                                                    setUserProfile(profile);
+                                                        setSelectedCity(data.defaultCity);
+                                                            setSelectedLocality(data.defaultLocality);
+                                                                if (data.defaultPinCode) setSelectedPinCode(data.defaultPinCode);
+                                };
 
-                                                                                                                                                                                                                                                                                                                                                                              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-4">
-                                                                                                                                                                                                                                                                                                                                                                                        <div>
-                                                                                                                                                                                                                                                                                                                                                                                                    <label className="block text-xs font-semibold text-navy-800 mb-1.5">Describe Your Problem *</label>
-                                                                                                                                                                                                                                                                                                                                                                                                                <textarea rows={3} value={problemDescription} onChange={(e) => setProblemDescription(e.target.value)} placeholder="Explain the issue, appliance model, or specific repair needed..." className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm focus:outline-none focus:border-teal-600 focus:bg-white" />
-                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                    <PhotoUploader photos={photos} onChange={setPhotos} />
-                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                  const updateUserProfile = async (updates: Partial<UserProfile>) => {
+                                        if (!db || !firebaseUser || !userProfile) return;
+                                            await updateDoc(doc(db, 'users', firebaseUser.uid), updates);
+                                                setUserProfile({ ...userProfile, ...updates });
+                                  };
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                              <div className="flex items-center justify-between">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <span className="flex items-center gap-1.5 text-xs font-bold text-navy-800"><MapPin className="w-4 h-4 text-teal-600" />Service Address in Bhopal</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      {gpsCoords && <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">GPS Attached</span>}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <select value={locality} onChange={(e) => setLocality(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:border-teal-600">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      {BHOPAL_LOCALITIES.map((loc) => <option key={loc.name} value={loc.name}>{loc.name} ({loc.pinCode})</option>)}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </select>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <textarea rows={2} value={fullAddress} onChange={(e) => setFullAddress(e.target.value)} placeholder="House / Flat No., Building & Landmark" className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm focus:outline-none focus:border-teal-600 focus:bg-white" />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </div>
+                                    const savePartnerProfile = async (
+                                            data: Omit<PartnerProfile, 'uid' | 'isOnline' | 'isRegistered' | 'createdAtMs'>
+                                    ) => {
+                                            if (!db || !firebaseUser) throw new Error('Not signed in.');
+                                                const next: PartnerProfile = {
+                                                          uid: firebaseUser.uid,
+                                                                ...data,
+                                                                      isOnline: partnerProfile?.isOnline ?? true,
+                                                                            isRegistered: true,
+                                                                                  createdAtMs: partnerProfile?.createdAtMs ?? Date.now(),
+                                                };
+                                                    await setDoc(doc(db, 'partners', firebaseUser.uid), next, { merge: true });
+                                                        setPartnerProfile(next);
+                                    };
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div className="flex items-center gap-1.5 text-xs font-bold text-navy-800"><Calendar className="w-4 h-4 text-teal-600" />Preferred Date & Time</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <input type="date" min={todayStr} value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:border-teal-600" />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {!isEmergency ? (
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div className="grid grid-cols-2 gap-2">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      {TIME_SLOTS.map((slot) => (
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <button key={slot} type="button" onClick={() => setPreferredSlot(slot)} className={`px-2.5 py-2 rounded-xl border text-[11px] font-semibold transition flex items-center justify-center gap-1 ${preferredSlot === slot ? 'bg-navy-800 text-white border-navy-800' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <Clock className="w-3 h-3 shrink-0" /><span>{slot}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </button>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ))}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ) : (
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div className="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2.5 text-xs text-rose-800 font-medium">Slot: Urgent / Earliest Available Partner</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        )}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                      const togglePartnerOnline = async () => {
+                                            if (!db || !firebaseUser || !partnerProfile) return;
+                                                const nextVal = !partnerProfile.isOnline;
+                                                    await updateDoc(doc(db, 'partners', firebaseUser.uid), { isOnline: nextVal });
+                                                        setPartnerProfile({ ...partnerProfile, isOnline: nextVal });
+                                      };
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div className="rounded-2xl bg-slate-100 border border-slate-200 p-3.5 text-xs text-slate-700 space-y-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <div className="flex items-center justify-between font-bold text-navy-800"><span>Starting Visit / Inspection Fee</span><span>₹{service.startingVisitFee}</span></div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <p className="text-[11px] text-slate-500">Pay Cash or UPI directly to the partner after work inspection & completion.</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                        const createBooking = async (input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>): Promise<Booking> => {
+                                                if (!db) throw new Error('Firestore not ready.');
+                                                    const payload = { ...input, status: 'pending' as BookingStatus, createdAtMs: Date.now() };
+                                                        const docRef = await addDoc(collection(db, 'bookings'), payload);
+                                                            return { id: docRef.id, ...payload };
+                                        };
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {error && <p className="text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{error}</p>}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <button type="submit" disabled={submitting} className="w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold shadow-sm flex items-center justify-center gap-2 disabled:opacity-60">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {submitting ? 'Confirming Booking...' : 'Confirm Booking'}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </button>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </form>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
-                            );
+                                          const acceptBooking = async (bookingId: string) => {
+                                                if (!db || !firebaseUser || !partnerProfile) return;
+                                                    await updateDoc(doc(db, 'bookings', bookingId), {
+                                                              status: 'accepted',
+                                                                    partnerId: firebaseUser.uid,
+                                                                          partnerName: partnerProfile.fullName,
+                                                                                partnerPhone: partnerProfile.phone,
+                                                    });
+                                          };
+
+                                            const updateBookingStatus = async (bookingId: string, status: BookingStatus) => {
+                                                    if (!db) return;
+                                                        await updateDoc(doc(db, 'bookings', bookingId), { status });
+                                            };
+
+                                              const loadAdminSnapshot = async (): Promise<AdminSnapshot> => {
+                                                    if (!db) throw new Error('Firestore not ready.');
+                                                        const [uSnap, pSnap, bSnap] = await Promise.all([
+                                                                  getDocs(collection(db, 'users')),
+                                                                        getDocs(collection(db, 'partners')),
+                                                                              getDocs(collection(db, 'bookings')),
+                                                        ]);
+                                                            return {
+                                                                      users: uSnap.docs.map((d) => d.data() as UserProfile).sort((a, b) => b.createdAtMs - a.createdAtMs),
+                                                                            partners: pSnap.docs.map((d) => d.data() as PartnerProfile).sort((a, b) => b.createdAtMs - a.createdAtMs),
+                                                                                  bookings: bSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs),
+                                                            };
+                                              };
+
+                                                const signOutUser = async () => {
+                                                        if (auth) await signOut(auth);
+                                                };
+
+                                                  const isAdmin = isAdminEmail(firebaseUser?.email);
+
+                                                    return (
+                                                            <AppContext.Provider
+                                                                  value={{
+                                                                            firebaseUser,
+                                                                                    authLoading,
+                                                                                            isAdmin,
+                                                                                                    userProfile,
+                                                                                                            partnerProfile,
+                                                                                                                    selectedCity,
+                                                                                                                            selectedLocality,
+                                                                                                                                    selectedPinCode,
+                                                                                                                                            bookings,
+                                                                                                                                                    setSelectedCity,
+                                                                                                                                                            setSelectedLocality,
+                                                                                                                                                                    setSelectedPinCode,
+                                                                                                                                                                            signInWithGoogle,
+                                                                                                                                                                                    signInWithEmail,
+                                                                                                                                                                                            signUpWithEmail,
+                                                                                                                                                                                                    completeUserProfile,
+                                                                                                                                                                                                            updateUserProfile,
+                                                                                                                                                                                                                    savePartnerProfile,
+                                                                                                                                                                                                                            togglePartnerOnline,
+                                                                                                                                                                                                                                    createBooking,
+                                                                                                                                                                                                                                            acceptBooking,
+                                                                                                                                                                                                                                                    updateBookingStatus,
+                                                                                                                                                                                                                                                            loadAdminSnapshot,
+                                                                                                                                                                                                                                                                    signOutUser,
+                                                                  }}
+                                                                      >
+                                                                            {children}
+                                                                                </AppContext.Provider>
+                                                    );
 };
+
+export function useApp(): AppContextValue {
+      const ctx = useContext(AppContext);
+        if (!ctx) throw new Error('useApp must be used inside AppProvider');
+          return ctx;
+}
 ===F: _tmp.txt===
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        )
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ))}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        )}
-                                                                                                                                                                                                                                                                              ))}
-                            )
-                                                        }
-                                                        }
-                                                                  })
-                                                        }
+}
+                                                                  }}
+                                                    )
+                                                }
+                                                            }
+                                                        ])
+                                              }
+                                            }
+                                                    })
+                                          }
+                                        }
+                                      }
+                                                }
+                                    }
+                                    )
+                                  }
+                                            }
+                                }
+                              }
+                            }
                           }
+                                                                        }
+                                                                    })
+                                                                })
+                                                                                })
+                                                    }
+                                                        })
+                                        }
+                                }
+                        })
+                                                          }
+                                                          }
+                                                                            }
+                                                                                                                                                      }
+                                                                                                                                                                                }
+                                                                                                                                                                                }
+                                                                                                                                                      }
+                                                                                                    }
+                                                                            }
+                                                          }
+                                                    }
+                                    })
+                            }
+                      })
 }
-})
-]
 }
-                    }
+}
+}
+}
+}
+}
+}
+      }
+}
+            }
+                }
+                }
           }
-}
-]
-}
 }
 }
 }

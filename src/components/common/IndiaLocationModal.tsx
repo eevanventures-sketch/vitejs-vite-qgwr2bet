@@ -1,0 +1,130 @@
+          import React, { useMemo, useState } from 'react';
+          import { Loader2, MapPin, Navigation, Search, X } from 'lucide-react';
+          import { INDIA_CITIES, reverseGeocodeIndia } from '../../data/indiaCities';
+          import type { GpsCoords } from '../../types';
+
+          interface IndiaLocationModalProps {
+              isOpen: boolean;
+                selectedCity: string;
+                  selectedLocality: string;
+                    onSelect: (city: string, locality: string, pinCode?: string, coords?: GpsCoords | null) => void;
+                      onClose: () => void;
+          }
+
+          export const IndiaLocationModal: React.FC<IndiaLocationModalProps> = ({
+              isOpen,
+                selectedCity,
+                  selectedLocality,
+                    onSelect,
+                      onClose,
+          }) => {
+              const [cityQuery, setCityQuery] = useState('');
+                const [activeCity, setActiveCity] = useState(selectedCity || 'Bhopal');
+                  const [customCity, setCustomCity] = useState('');
+                    const [customArea, setCustomArea] = useState('');
+                      const [pinCode, setPinCode] = useState('');
+                        const [gpsLoading, setGpsLoading] = useState(false);
+                          const [gpsError, setGpsError] = useState<string | null>(null);
+
+                            const filteredCities = useMemo(() => {
+                                  const q = cityQuery.trim().toLowerCase();
+                                      if (!q) return INDIA_CITIES;
+                                          return INDIA_CITIES.filter((c) => c.name.toLowerCase().includes(q) || c.state.toLowerCase().includes(q));
+                            }, [cityQuery]);
+
+                              const currentCityObj = INDIA_CITIES.find((c) => c.name === activeCity);
+
+                                const handleUseGps = () => {
+                                      setGpsError(null);
+                                          if (!navigator.geolocation) return setGpsError('GPS not supported on this browser.');
+                                              setGpsLoading(true);
+                                                  navigator.geolocation.getCurrentPosition(
+                                                          async (pos) => {
+                                                                    const lat = pos.coords.latitude;
+                                                                            const lng = pos.coords.longitude;
+                                                                                    const geo = await reverseGeocodeIndia(lat, lng);
+                                                                                            setGpsLoading(false);
+                                                                                                    onSelect(geo.city, geo.locality, geo.pinCode, { lat, lng });
+                                                                                                            onClose();
+                                                          },
+                                                                () => {
+                                                                          setGpsLoading(false);
+                                                                                  setGpsError('Location permission denied. Please choose or enter your city below.');
+                                                                },
+                                                                      { enableHighAccuracy: true, timeout: 12000 }
+                                                  );
+                                };
+
+                                  const handleCustomSubmit = (e: React.FormEvent) => {
+                                        e.preventDefault();
+                                            const finalCity = (activeCity === '__other__' ? customCity : activeCity).trim();
+                                                const finalArea = customArea.trim() || finalCity;
+                                                    if (finalCity.length < 2) return;
+                                                        onSelect(finalCity, finalArea, pinCode.trim(), null);
+                                                            onClose();
+                                  };
+
+                                    if (!isOpen) return null;
+
+                                      return (
+                                            <div className="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-[1px] flex items-end sm:items-center justify-center">
+                                                  <div className="w-full max-w-[430px] bg-white rounded-t-3xl sm:rounded-2xl max-h-[88vh] flex flex-col shadow-xl">
+                                                          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                                                                    <div>
+                                                                                <h2 className="text-base font-bold text-navy-800">Select City & Area (Pan-India)</h2>
+                                                                                            <p className="text-xs text-slate-500">Current: {selectedLocality}, {selectedCity}</p>
+                                                                                                      </div>
+                                                                                                                <button type="button" onClick={onClose} aria-label="Close modal" className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X className="w-5 h-5" /></button>
+                                                                                                                        </div>
+
+                                                                                                                                <div className="p-4 space-y-3 overflow-y-auto">
+                                                                                                                                          <button type="button" disabled={gpsLoading} onClick={handleUseGps} className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-teal-200 bg-teal-50 text-teal-800 text-xs font-semibold disabled:opacity-60">
+                                                                                                                                                      <span className="flex items-center gap-2">
+                                                                                                                                                                    {gpsLoading ? <Loader2 className="w-4 h-4 text-teal-600 animate-spin" /> : <Navigation className="w-4 h-4 text-teal-600" />}
+                                                                                                                                                                                  {gpsLoading ? 'Detecting your India location...' : 'Auto-Detect Current GPS Location'}
+                                                                                                                                                                                              </span>
+                                                                                                                                                                                                          <span className="text-[10px] uppercase bg-white px-2 py-0.5 rounded-full border border-teal-200">GPS</span>
+                                                                                                                                                                                                                    </button>
+                                                                                                                                                                                                                              {gpsError && <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{gpsError}</p>}
+
+                                                                                                                                                                                                                                        <div className="relative">
+                                                                                                                                                                                                                                                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                                                                                                                                                                                                                                                <input type="text" value={cityQuery} onChange={(e) => setCityQuery(e.target.value)} placeholder="Search city (Bhopal, Indore, Delhi, Mumbai...)" className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:border-teal-500" />
+                                                                                                                                                                                                                                                                          </div>
+
+                                                                                                                                                                                                                                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                                                                                                                                                                                                                                                {filteredCities.map((c) => (
+                                                                                                                                                                                                                                                                                                                <button key={c.name} type="button" onClick={() => setActiveCity(c.name)} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${activeCity === c.name ? 'bg-navy-800 text-white border-navy-800' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>{c.name}</button>
+                                                                                                                                                                                                                                                                                                ))}
+                                                                                                                                                                                                                                                                                                            <button type="button" onClick={() => setActiveCity('__other__')} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${activeCity === '__other__' ? 'bg-teal-600 text-white border-teal-600' : 'bg-teal-50 text-teal-800 border-teal-200'}`}>+ Other City / Town</button>
+                                                                                                                                                                                                                                                                                                                      </div>
+
+                                                                                                                                                                                                                                                                                                                                {currentCityObj && (
+                                                                                                                                                                                                                                                                                                                                              <div className="space-y-1.5 pt-1">
+                                                                                                                                                                                                                                                                                                                                                            <p className="text-[11px] font-bold text-slate-500 uppercase">Popular Areas in {currentCityObj.name}</p>
+                                                                                                                                                                                                                                                                                                                                                                          <div className="flex flex-wrap gap-1.5">
+                                                                                                                                                                                                                                                                                                                                                                                          {currentCityObj.sampleAreas.map((area) => (
+                                                                                                                                                                                                                                                                                                                                                                                                              <button key={area} type="button" onClick={() => { onSelect(currentCityObj.name, area, '', null); onClose(); }} className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-teal-50 text-slate-800 text-xs font-medium flex items-center gap-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                  <MapPin className="w-3 h-3 text-teal-600" />{area}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    </button>
+                                                                                                                                                                                                                                                                                                                                                                                          ))}
+                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                )}
+
+                                                                                                                                                                                                                                                                                                                                          <form onSubmit={handleCustomSubmit} className="bg-slate-50 rounded-2xl border border-slate-200 p-3 space-y-2.5">
+                                                                                                                                                                                                                                                                                                                                                      <p className="text-xs font-bold text-navy-800">Or Enter Any City, Area & PIN Code</p>
+                                                                                                                                                                                                                                                                                                                                                                  {activeCity === '__other__' && (
+                                                                                                                                                                                                                                                                                                                                                                                  <input type="text" required value={customCity} onChange={(e) => setCustomCity(e.target.value)} placeholder="Enter City / Town / Village name *" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+                                                                                                                                                                                                                                                                                                                                                                  )}
+                                                                                                                                                                                                                                                                                                                                                                              <div className="grid grid-cols-2 gap-2">
+                                                                                                                                                                                                                                                                                                                                                                                            <input type="text" value={customArea} onChange={(e) => setCustomArea(e.target.value)} placeholder="Colony / Locality *" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+                                                                                                                                                                                                                                                                                                                                                                                                          <input type="tel" maxLength={6} value={pinCode} onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))} placeholder="6-digit PIN" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+                                                                                                                                                                                                                                                                                                                                                                                                                      </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                  <button type="submit" className="w-full py-2.5 rounded-xl bg-navy-800 text-white text-xs font-bold">Confirm Location</button>
+                                                                                                                                                                                                                                                                                                                                                                                                                                            </form>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                              </div>
+                                      );
+          };

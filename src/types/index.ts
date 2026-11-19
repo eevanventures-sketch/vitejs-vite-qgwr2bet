@@ -52,17 +52,19 @@ export type ServiceCategoryId =
                                 isEmergency: boolean;
                                   problemDescription: string;
                                     photos: UploadedPhoto[];
-                                      locality: string;
-                                        fullAddress: string;
-                                          gpsCoords?: GpsCoords | null;
-                                            preferredDate: string;
-                                              preferredSlot: string;
-                                                estimatedAmount: number;
-                                                  status: BookingStatus;
-                                                    partnerId?: string;
-                                                      partnerName?: string;
-                                                        partnerPhone?: string;
-                                                          createdAtMs: number;
+                                      city: string;
+                                        locality: string;
+                                          pinCode?: string;
+                                            fullAddress: string;
+                                              gpsCoords?: GpsCoords | null;
+                                                preferredDate: string;
+                                                  preferredSlot: string;
+                                                    estimatedAmount: number;
+                                                      status: BookingStatus;
+                                                        partnerId?: string;
+                                                          partnerName?: string;
+                                                            partnerPhone?: string;
+                                                              createdAtMs: number;
           }
 
           export interface UserProfile {
@@ -71,20 +73,23 @@ export type ServiceCategoryId =
                   name: string;
                     email: string;
                       phone: string;
-                        defaultLocality: string;
-                          defaultAddress: string;
-                            createdAtMs: number;
+                        defaultCity: string;
+                          defaultLocality: string;
+                            defaultPinCode?: string;
+                              defaultAddress: string;
+                                createdAtMs: number;
           }
 
           export interface PartnerProfile {
               uid: string;
                 fullName: string;
                   phone: string;
-                    professions: ServiceCategoryId[];
-                      serviceAreas: string[];
-                        experienceYears: number;
-                          bio: string;
-                            isOnline: boolean;
-                              isRegistered: boolean;
-                                createdAtMs: number;
+                    city: string;
+                      professions: ServiceCategoryId[];
+                        serviceAreas: string[];
+                          experienceYears: number;
+                            bio: string;
+                              isOnline: boolean;
+                                isRegistered: boolean;
+                                  createdAtMs: number;
           }
