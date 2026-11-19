@@ -8,6 +8,9 @@ export type ServiceCategoryId =
         | 'pending' | 'accepted' | 'on_the_way'
           | 'in_progress' | 'completed' | 'cancelled';
 
+          export type PaymentStatus = 'unpaid' | 'paid';
+          export type PaymentMethod = 'upi' | 'cash';
+
           export interface ServiceCategory {
               id: ServiceCategoryId;
                 name: string;
@@ -61,10 +64,18 @@ export type ServiceCategoryId =
                                                   preferredSlot: string;
                                                     estimatedAmount: number;
                                                       status: BookingStatus;
-                                                        partnerId?: string;
-                                                          partnerName?: string;
-                                                            partnerPhone?: string;
-                                                              createdAtMs: number;
+                                                        startOtp?: string;
+                                                          finalAmount?: number;
+                                                            workNote?: string;
+                                                              paymentStatus?: PaymentStatus;
+                                                                paymentMethod?: PaymentMethod;
+                                                                  rating?: number;
+                                                                    review?: string;
+                                                                      ratedAtMs?: number;
+                                                                        partnerId?: string;
+                                                                          partnerName?: string;
+                                                                            partnerPhone?: string;
+                                                                              createdAtMs: number;
           }
 
           export interface UserProfile {
@@ -91,5 +102,26 @@ export type ServiceCategoryId =
                             bio: string;
                               isOnline: boolean;
                                 isRegistered: boolean;
-                                  createdAtMs: number;
+                                  isVerified?: boolean;
+                                    createdAtMs: number;
+          }
+
+          export interface AppSettings {
+              supportPhone: string;
+                whatsappNumber: string;
+                  supportEmail: string;
+                    upiId: string;
+                      bannerNotice: string;
+                        updatedAtMs?: number;
+          }
+
+          export interface AppFeedback {
+              id: string;
+                uid: string;
+                  name: string;
+                    email: string;
+                      role: UserRole;
+                        rating: number;
+                          message: string;
+                            createdAtMs: number;
           }
