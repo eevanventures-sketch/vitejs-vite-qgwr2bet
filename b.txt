@@ -214,9 +214,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                               const createBooking = async (input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>): Promise<Booking> => {
                                                     if (!db) throw new Error('Firestore not ready.');
                                                         const startOtp = String(Math.floor(1000 + Math.random() * 9000));
-                                                            const payload = { ...input, status: 'pending' as BookingStatus, startOtp, paymentStatus: 'unpaid' as const, createdAtMs: Date.now() };
-                                                                const docRef = await addDoc(collection(db, 'bookings'), payload);
-                                                                    return { id: docRef.id, ...payload };
+                                                            const raw = { ...input, status: 'pending' as BookingStatus, startOtp, paymentStatus: 'unpaid' as const, createdAtMs: Date.now() };
+                                                                const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) as Omit<Booking, 'id'>;
+                                                                    const docRef = await addDoc(collection(db, 'bookings'), payload);
+                                                                        return { id: docRef.id, ...payload };
                                               };
 
                                                 const acceptBooking = async (bookingId: string) => {
