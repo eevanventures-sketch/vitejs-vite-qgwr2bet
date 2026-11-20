@@ -26,6 +26,89 @@
                       return 'copied';
           }
 
+          export async function shareBookingReceipt(b: Booking): Promise<'shared' | 'copied'> {
+              const billAmt = b.finalAmount ?? b.estimatedAmount;
+                const lines = [
+                        '*NEEDZO – Digital Service Receipt*',
+                            `Receipt ID: #${b.id.slice(0, 8).toUpperCase()}`,
+                                `Service: ${b.serviceTitle}`,
+                                    `Date: ${b.preferredDate}`,
+                                        `Location: ${b.locality}, ${b.city}`,
+                                            b.partnerName ? `Partner: ${b.partnerName}` : '',
+                                                b.couponCode ? `Coupon (${b.couponCode}): -₹${b.discountAmount || 0}` : '',
+                                                    `Total Amount: ₹${billAmt}`,
+                                                        `Payment: ${b.paymentStatus === 'paid' ? `PAID (${(b.paymentMethod || 'cash').toUpperCase()})` : 'Pending'}`,
+                                                            'Book via NEEDZO: https://needzo-bhopal.eevanventures.workers.dev',
+                ].filter(Boolean);
+                  const text = lines.join('\n');
+                    if (typeof navigator !== 'undefined' && navigator.share) {
+                            try {
+                                      await navigator.share({ title: 'NEEDZO Receipt', text });
+                                            return 'shared';
+                            } catch {
+                                      // Fallback
+                            }
+                    }
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                            await navigator.clipboard.writeText(text);
+                      }
+                        return 'copied';
+          }
+
+          export function playLeadAlertSound(): void {
+              try {
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                              navigator.vibrate([200, 100, 200]);
+                    }
+                        const win = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+                            const Ctx = win.AudioContext || win.webkitAudioContext;
+                                if (!Ctx) return;
+                                    const ctx = new Ctx();
+                                        const now = ctx.currentTime;
+                                            [660, 880].forEach((freq, idx) => {
+                                                      const osc = ctx.createOscillator();
+                                                            const gain = ctx.createGain();
+                                                                  osc.type = 'sine';
+                                                                        osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+                                                                              gain.gain.setValueAtTime(0.18, now + idx * 0.14);
+                                                                                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.25);
+                                                                                          osc.connect(gain);
+                                                                                                gain.connect(ctx.destination);
+                                                                                                      osc.start(now + idx * 0.14);
+                                                                                                            osc.stop(now + idx * 0.14 + 0.26);
+                                            });
+              } catch {
+                    // Ignore autoplay restriction
+              }
+          }
+
+          export function compressImageFile(file: File, maxDim = 900, quality = 0.72): Promise<{ dataUrl: string; sizeKb: number }> {
+              return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                        reader.onerror = () => reject(new Error('Read failed'));
+                            reader.onload = () => {
+                                      const rawUrl = String(reader.result || '');
+                                            const img = new Image();
+                                                  img.onerror = () => resolve({ dataUrl: rawUrl, sizeKb: Math.round(file.size / 1024) });
+                                                        img.onload = () => {
+                                                                    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                                                                            const w = Math.max(1, Math.round(img.width * scale));
+                                                                                    const h = Math.max(1, Math.round(img.height * scale));
+                                                                                            const canvas = document.createElement('canvas');
+                                                                                                    canvas.width = w;
+                                                                                                            canvas.height = h;
+                                                                                                                    const ctx = canvas.getContext('2d');
+                                                                                                                            if (!ctx) return resolve({ dataUrl: rawUrl, sizeKb: Math.round(file.size / 1024) });
+                                                                                                                                    ctx.drawImage(img, 0, 0, w, h);
+                                                                                                                                            const compressed = canvas.toDataURL('image/jpeg', quality);
+                                                                                                                                                    resolve({ dataUrl: compressed, sizeKb: Math.max(1, Math.round((compressed.length * 0.75) / 1024)) });
+                                                        };
+                                                              img.src = rawUrl;
+                            };
+                                reader.readAsDataURL(file);
+              });
+          }
+
           export function getGoogleMapsUrl(booking: Booking): string {
               if (booking.gpsCoords) {
                     return `https://www.google.com/maps/dir/?api=1&destination=${booking.gpsCoords.lat},${booking.gpsCoords.lng}`;

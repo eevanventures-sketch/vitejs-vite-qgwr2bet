@@ -63,19 +63,21 @@ export type ServiceCategoryId =
                                                 preferredDate: string;
                                                   preferredSlot: string;
                                                     estimatedAmount: number;
-                                                      status: BookingStatus;
-                                                        startOtp?: string;
-                                                          finalAmount?: number;
-                                                            workNote?: string;
-                                                              paymentStatus?: PaymentStatus;
-                                                                paymentMethod?: PaymentMethod;
-                                                                  rating?: number;
-                                                                    review?: string;
-                                                                      ratedAtMs?: number;
-                                                                        partnerId?: string;
-                                                                          partnerName?: string;
-                                                                            partnerPhone?: string;
-                                                                              createdAtMs: number;
+                                                      couponCode?: string;
+                                                        discountAmount?: number;
+                                                          status: BookingStatus;
+                                                            startOtp?: string;
+                                                              finalAmount?: number;
+                                                                workNote?: string;
+                                                                  paymentStatus?: PaymentStatus;
+                                                                    paymentMethod?: PaymentMethod;
+                                                                      rating?: number;
+                                                                        review?: string;
+                                                                          ratedAtMs?: number;
+                                                                            partnerId?: string;
+                                                                              partnerName?: string;
+                                                                                partnerPhone?: string;
+                                                                                  createdAtMs: number;
           }
 
           export interface UserProfile {
@@ -103,7 +105,9 @@ export type ServiceCategoryId =
                               isOnline: boolean;
                                 isRegistered: boolean;
                                   isVerified?: boolean;
-                                    createdAtMs: number;
+                                    kycDocType?: string;
+                                      kycDocUrl?: string;
+                                        createdAtMs: number;
           }
 
           export interface AppSettings {
@@ -124,4 +128,14 @@ export type ServiceCategoryId =
                         rating: number;
                           message: string;
                             createdAtMs: number;
+          }
+
+          export interface Coupon {
+              id: string;
+                code: string;
+                  discountAmount: number;
+                    minOrderAmount: number;
+                      active: boolean;
+                        description: string;
+                          createdAtMs: number;
           }
