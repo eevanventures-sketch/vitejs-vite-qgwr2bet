@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
-      createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword,
-        signInWithPopup, signOut, type User,
+      GoogleAuthProvider, createUserWithEmailAndPassword, onAuthStateChanged,
+        signInWithCredential, signInWithEmailAndPassword, signInWithPopup, signOut, type User,
 } from 'firebase/auth';
 import {
       addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
 } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../services/firebase';
-import { isAdminEmail } from '../services/capacitor';
+import { isAdminEmail, isNativeAndroid, nativeGoogleSignIn } from '../services/capacitor';
 import type {
       AppFeedback, AppSettings, Booking, BookingStatus, Coupon, PartnerProfile,
         PaymentMethod, UserProfile, UserRole,
@@ -167,7 +167,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                                                     return () => { u1(); u2(); };
                               }, [firebaseUser, userProfile]);
 
-                                const signInWithGoogle = async () => { if (!auth) throw new Error('Firebase not ready.'); await signInWithPopup(auth, googleProvider); };
+                                const signInWithGoogle = async () => {
+                                        if (!auth) throw new Error('Firebase not ready.');
+                                            if (isNativeAndroid()) {
+                                                      const idToken = await nativeGoogleSignIn();
+                                                            const cred = GoogleAuthProvider.credential(idToken);
+                                                                  await signInWithCredential(auth, cred);
+                                                                        return;
+                                            }
+                                                await signInWithPopup(auth, googleProvider);
+                                };
+
                                   const signInWithEmail = async (email: string, password: string) => { if (!auth) throw new Error('Firebase not ready.'); await signInWithEmailAndPassword(auth, email, password); };
                                     const signUpWithEmail = async (email: string, password: string) => { if (!auth) throw new Error('Firebase not ready.'); await createUserWithEmailAndPassword(auth, email, password); };
 
