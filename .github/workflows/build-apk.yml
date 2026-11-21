@@ -28,14 +28,12 @@ jobs:
             keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=NEEDZO,O=EevanVentures,C=IN"
             mkdir -p keystore-setup
             base64 -w 0 "$HOME/.android/debug.keystore" > keystore-setup/keystore-base64.txt
-            SHA1=$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -alias androiddebugkey -storepass android | grep -i "SHA1:" | head -n 1)
-            echo "$SHA1" > keystore-setup/sha1.txt
-            echo "## NEEDZO Keystore Created" >> "$GITHUB_STEP_SUMMARY"
-            echo "Copy **SHA1** below for Firebase Console:" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            echo "$SHA1" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
+          SHA1=$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -alias androiddebugkey -storepass android | grep -i "SHA1:" | head -n 1)
+          echo "## APK Signing SHA1" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "$SHA1" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "<!doctype html><html><body>Loading NEEDZO...</body></html>" > dist/index.html
           cat << 'EOF' > assets/logo.svg
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
@@ -52,6 +50,7 @@ jobs:
           npx capacitor-assets generate --android --iconBackgroundColor '#0F172A' --splashBackgroundColor '#0F172A'
           if [ -n "$GOOGLE_SERVICES" ]; then
             node -e "require('fs').writeFileSync('android/app/google-services.json', process.env.GOOGLE_SERVICES)"
+            node -e "const g=JSON.parse(process.env.GOOGLE_SERVICES);const c=(g.client&&g.client[0]&&g.client[0].oauth_client)||[];require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\nOAuth clients in google-services.json: '+c.map(x=>x.client_type).join(', ')+'\n')"
             node -e "const fs=require('fs'),p='android/variables.gradle';fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('ext {','ext {'+String.fromCharCode(10)+'    rgcfaIncludeGoogle = true'))"
           fi
           npx cap sync android
