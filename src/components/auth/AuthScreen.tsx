@@ -43,10 +43,9 @@ export const AuthScreen: React.FC = () => {
                                                     try {
                                                               await signInWithGoogle();
                                                     } catch (err: unknown) {
-                                                              const msg = err instanceof Error ? err.message : '';
-                                                                    if (msg.includes('popup-closed')) setError('Sign-in popup was closed.');
-                                                                          else if (msg.includes('NATIVE_GOOGLE_NOT_INSTALLED')) setError('Install updated APK for Google Sign-In, or use Email below.');
-                                                                                else setError('Google sign-in unavailable right now. Please use Email & Password below.');
+                                                              const msg = err instanceof Error ? err.message : String(err || '');
+                                                                    if (msg.includes('popup-closed') || msg.toLowerCase().includes('cancel')) setError('Sign-in was cancelled.');
+                                                                          else setError(`Google sign-in [v2]: ${msg || 'Unknown error'}`);
                                                     } finally {
                                                               setBusy(false);
                                                     }
