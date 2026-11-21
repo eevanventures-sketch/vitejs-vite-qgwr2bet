@@ -46,7 +46,7 @@ jobs:
             <path d="M690 235 L704 271 L740 285 L704 299 L690 335 L676 299 L640 285 L676 271 Z" fill="#FBBF24"/>
           </svg>
           EOF
-          npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/assets@3.0.5 @capacitor-firebase/authentication@7
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/assets@3.0.5 @capacitor-firebase/authentication@7
           node -e "require('fs').writeFileSync('capacitor.config.json', JSON.stringify({ appId: 'com.eevanventures.needzo', appName: 'NEEDZO', webDir: 'dist', server: { url: 'https://needzo-bhopal.eevanventures.workers.dev', cleartext: false }, plugins: { FirebaseAuthentication: { skipNativeAuth: true, providers: ['google.com'] } } }, null, 2))"
           npx cap add android
           npx capacitor-assets generate --android --iconBackgroundColor '#0F172A' --splashBackgroundColor '#0F172A'
