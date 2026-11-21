@@ -52,7 +52,7 @@ jobs:
           npx capacitor-assets generate --android --iconBackgroundColor '#0F172A' --splashBackgroundColor '#0F172A'
           if [ -n "$GOOGLE_SERVICES" ]; then
             node -e "require('fs').writeFileSync('android/app/google-services.json', process.env.GOOGLE_SERVICES)"
-            echo "ext.rgcfaIncludeGoogle = true" >> android/variables.gradle
+            node -e "const fs=require('fs'),p='android/variables.gradle';fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('ext {','ext {'+String.fromCharCode(10)+'    rgcfaIncludeGoogle = true'))"
           fi
           npx cap sync android
           cd android
