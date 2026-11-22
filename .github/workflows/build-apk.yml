@@ -26,14 +26,7 @@ jobs:
           else
             rm -f "$HOME/.android/debug.keystore"
             keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=NEEDZO,O=EevanVentures,C=IN"
-            mkdir -p keystore-setup
-            base64 -w 0 "$HOME/.android/debug.keystore" > keystore-setup/keystore-base64.txt
           fi
-          SHA1=$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -alias androiddebugkey -storepass android | grep -i "SHA1:" | head -n 1)
-          echo "## APK Signing SHA1" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "$SHA1" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "<!doctype html><html><body>Loading NEEDZO...</body></html>" > dist/index.html
           cat << 'EOF' > assets/logo.svg
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
@@ -50,19 +43,26 @@ jobs:
           npx capacitor-assets generate --android --iconBackgroundColor '#0F172A' --splashBackgroundColor '#0F172A'
           if [ -n "$GOOGLE_SERVICES" ]; then
             node -e "require('fs').writeFileSync('android/app/google-services.json', process.env.GOOGLE_SERVICES)"
-            node -e "const g=JSON.parse(process.env.GOOGLE_SERVICES);const c=(g.client&&g.client[0]&&g.client[0].oauth_client)||[];require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\nOAuth clients in google-services.json: '+c.map(x=>x.client_type).join(', ')+'\n')"
             node -e "const fs=require('fs'),p='android/variables.gradle';fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('ext {','ext {'+String.fromCharCode(10)+'    rgcfaIncludeGoogle = true'))"
           fi
           npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
+          cd ..
+          APK_SHA=$(keytool -printcert -jarfile android/app/build/outputs/apk/debug/app-debug.apk | grep -i "SHA1:" | head -n 1)
+          echo "### APK Diagnostic" >> "$GITHUB_STEP_SUMMARY"
+          echo "Actual APK $APK_SHA" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$GOOGLE_SERVICES" ]; then
+            node -e "const g=JSON.parse(process.env.GOOGLE_SERVICES);const c=g.client&&g.client[0];const pkg=c?.client_info?.android_client_info?.package_name;const o1=(c?.oauth_client||[]).find(x=>x.client_type===1);const o3=(c?.oauth_client||[]).find(x=>x.client_type===3);require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\nJSON Package: '+pkg+'\nJSON Hash: '+(o1?.certificate_hash||'none')+'\nJSON Web Client: '+(o3?.client_id||'none')+'\n')"
+          fi
+          STR_XML="android/app/build/generated/res/google-services/debug/values/values.xml"
+          if [ -f "$STR_XML" ]; then
+            grep "default_web_client_id" "$STR_XML" >> "$GITHUB_STEP_SUMMARY" || echo "NO_DEFAULT_WEB_CLIENT_ID" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "MISSING_VALUES_XML" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: NEEDZO-Android-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: NEEDZO-Keystore-Setup
-          path: keystore-setup
-          if-no-files-found: ignore
