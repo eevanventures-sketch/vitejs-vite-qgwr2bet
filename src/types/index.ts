@@ -71,13 +71,15 @@ export type ServiceCategoryId =
                                                                 workNote?: string;
                                                                   paymentStatus?: PaymentStatus;
                                                                     paymentMethod?: PaymentMethod;
-                                                                      rating?: number;
-                                                                        review?: string;
-                                                                          ratedAtMs?: number;
-                                                                            partnerId?: string;
-                                                                              partnerName?: string;
-                                                                                partnerPhone?: string;
-                                                                                  createdAtMs: number;
+                                                                      paidAtMs?: number;
+                                                                        transactionRef?: string;
+                                                                          rating?: number;
+                                                                            review?: string;
+                                                                              ratedAtMs?: number;
+                                                                                partnerId?: string;
+                                                                                  partnerName?: string;
+                                                                                    partnerPhone?: string;
+                                                                                      createdAtMs: number;
           }
 
           export interface UserProfile {
