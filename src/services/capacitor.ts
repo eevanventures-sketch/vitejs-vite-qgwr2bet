@@ -9,6 +9,36 @@ export function getPlatformLabel(): string {
       return isNativeAndroid() ? 'NEEDZO Android App' : 'NEEDZO India Web App';
 }
 
+export async function nativeGoogleSignOut(): Promise<void> {
+      try {
+            const win = window as unknown as {
+                      Capacitor?: {
+                                Plugins?: { FirebaseAuthentication?: { signOut?: () => Promise<void> } };
+                                        nativePromise?: (pluginId: string, methodName: string, options?: Record<string, unknown>) => Promise<unknown>;
+                                                toNative?: (
+                                                              pluginId: string,
+                                                                        methodName: string,
+                                                                                  options: Record<string, unknown>,
+                                                                                            callbacks: { resolve: (v: unknown) => void; reject: (e: unknown) => void }
+                                                ) => void;
+                      };
+            };
+                const cap = win.Capacitor;
+                    if (!cap) return;
+                        if (cap.Plugins?.FirebaseAuthentication?.signOut) {
+                                  await cap.Plugins.FirebaseAuthentication.signOut();
+                        } else if (typeof cap.nativePromise === 'function') {
+                                  await cap.nativePromise('FirebaseAuthentication', 'signOut', {});
+                        } else if (typeof cap.toNative === 'function') {
+                                  await new Promise((resolve) => {
+                                            cap.toNative!('FirebaseAuthentication', 'signOut', {}, { resolve, reject: resolve });
+                                  });
+                        }
+      } catch {
+            // Ignore native signOut errors
+      }
+}
+
 export async function nativeGoogleSignIn(): Promise<string> {
       const win = window as unknown as {
             Capacitor?: {
@@ -33,28 +63,30 @@ export async function nativeGoogleSignIn(): Promise<string> {
         const cap = win.Capacitor;
           if (!cap) throw new Error('NO_CAPACITOR_OBJECT');
 
-            const opts = { useCredentialManager: false };
-              const direct = cap.Plugins?.FirebaseAuthentication;
-                let res: { credential?: { idToken?: string | null } | null } | undefined;
+            await nativeGoogleSignOut();
 
-                  if (direct?.signInWithGoogle) {
-                        res = await direct.signInWithGoogle(opts);
-                  } else if (typeof cap.nativePromise === 'function') {
-                        res = await cap.nativePromise('FirebaseAuthentication', 'signInWithGoogle', opts);
-                  } else if (typeof cap.toNative === 'function') {
-                        res = await new Promise((resolve, reject) => {
-                                  cap.toNative!('FirebaseAuthentication', 'signInWithGoogle', opts, {
-                                            resolve: (v) => resolve(v as { credential?: { idToken?: string | null } | null }),
-                                                    reject,
-                                  });
-                        });
-                  } else {
-                        throw new Error('NO_BRIDGE:' + Object.keys(cap).join(','));
-                  }
+              const opts = { useCredentialManager: false };
+                const direct = cap.Plugins?.FirebaseAuthentication;
+                  let res: { credential?: { idToken?: string | null } | null } | undefined;
 
-                    const idToken = res?.credential?.idToken;
-                      if (!idToken) throw new Error('NO_ID_TOKEN');
-                        return idToken;
+                    if (direct?.signInWithGoogle) {
+                            res = await direct.signInWithGoogle(opts);
+                    } else if (typeof cap.nativePromise === 'function') {
+                            res = await cap.nativePromise('FirebaseAuthentication', 'signInWithGoogle', opts);
+                    } else if (typeof cap.toNative === 'function') {
+                            res = await new Promise((resolve, reject) => {
+                                      cap.toNative!('FirebaseAuthentication', 'signInWithGoogle', opts, {
+                                                resolve: (v) => resolve(v as { credential?: { idToken?: string | null } | null }),
+                                                        reject,
+                                      });
+                            });
+                    } else {
+                            throw new Error('NO_BRIDGE:' + Object.keys(cap).join(','));
+                    }
+
+                      const idToken = res?.credential?.idToken;
+                        if (!idToken) throw new Error('NO_ID_TOKEN');
+                          return idToken;
 }
 
 export async function shareNeedzoApp(): Promise<'shared' | 'copied'> {

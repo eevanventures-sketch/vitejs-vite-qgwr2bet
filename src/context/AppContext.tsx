@@ -7,7 +7,7 @@ import {
       addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
 } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../services/firebase';
-import { isAdminEmail, isNativeAndroid, nativeGoogleSignIn } from '../services/capacitor';
+import { isAdminEmail, isNativeAndroid, nativeGoogleSignIn, nativeGoogleSignOut } from '../services/capacitor';
 import type {
       AppFeedback, AppSettings, Booking, BookingStatus, Coupon, PartnerProfile,
         PaymentMethod, UserProfile, UserRole,
@@ -175,7 +175,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                                                   await signInWithCredential(auth, cred);
                                                                         return;
                                             }
-                                                await signInWithPopup(auth, googleProvider);
+                                                googleProvider.setCustomParameters({ prompt: 'select_account' });
+                                                    await signInWithPopup(auth, googleProvider);
                                 };
 
                                   const signInWithEmail = async (email: string, password: string) => { if (!auth) throw new Error('Firebase not ready.'); await signInWithEmailAndPassword(auth, email, password); };
@@ -314,7 +315,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                                                                                     };
                                                                     };
 
-                                                                      const signOutUser = async () => { if (auth) await signOut(auth); };
+                                                                      const signOutUser = async () => {
+                                                                            if (isNativeAndroid()) await nativeGoogleSignOut();
+                                                                                if (auth) await signOut(auth);
+                                                                      };
                                                                         const isAdmin = isAdminEmail(firebaseUser?.email);
 
                                                                           return (
