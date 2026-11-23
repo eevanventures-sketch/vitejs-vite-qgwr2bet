@@ -118,7 +118,9 @@ export type ServiceCategoryId =
                   supportEmail: string;
                     upiId: string;
                       bannerNotice: string;
-                        updatedAtMs?: number;
+                        categoryRates?: Record<string, number>;
+                          serviceRates?: Record<string, number>;
+                            updatedAtMs?: number;
           }
 
           export interface AppFeedback {
