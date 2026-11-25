@@ -42,6 +42,12 @@ export type ServiceCategoryId =
                 lng: number;
           }
 
+          export interface ExtraChargeItem {
+              id: string;
+                label: string;
+                  amount: number;
+          }
+
           export interface Booking {
               id: string;
                 customerId: string;
@@ -68,18 +74,19 @@ export type ServiceCategoryId =
                                                           status: BookingStatus;
                                                             startOtp?: string;
                                                               finalAmount?: number;
-                                                                workNote?: string;
-                                                                  paymentStatus?: PaymentStatus;
-                                                                    paymentMethod?: PaymentMethod;
-                                                                      paidAtMs?: number;
-                                                                        transactionRef?: string;
-                                                                          rating?: number;
-                                                                            review?: string;
-                                                                              ratedAtMs?: number;
-                                                                                partnerId?: string;
-                                                                                  partnerName?: string;
-                                                                                    partnerPhone?: string;
-                                                                                      createdAtMs: number;
+                                                                extraCharges?: ExtraChargeItem[];
+                                                                  workNote?: string;
+                                                                    paymentStatus?: PaymentStatus;
+                                                                      paymentMethod?: PaymentMethod;
+                                                                        paidAtMs?: number;
+                                                                          transactionRef?: string;
+                                                                            rating?: number;
+                                                                              review?: string;
+                                                                                ratedAtMs?: number;
+                                                                                  partnerId?: string;
+                                                                                    partnerName?: string;
+                                                                                      partnerPhone?: string;
+                                                                                        createdAtMs: number;
           }
 
           export interface UserProfile {

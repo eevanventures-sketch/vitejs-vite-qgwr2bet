@@ -1,348 +1,353 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import {
-    GoogleAuthProvider, createUserWithEmailAndPassword, onAuthStateChanged,
-      signInWithCredential, signInWithEmailAndPassword, signInWithPopup, signOut, type User,
-} from 'firebase/auth';
-import {
-    addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
-} from 'firebase/firestore';
-import { auth, db, googleProvider } from '../services/firebase';
-import { isAdminEmail, isNativeAndroid, nativeGoogleSignIn, nativeGoogleSignOut } from '../services/capacitor';
-import type {
-    AppFeedback, AppSettings, Booking, BookingStatus, Coupon, PartnerProfile,
-      PaymentMethod, UserProfile, UserRole,
-} from '../types';
+          import React, { createContext, useContext, useEffect, useState } from 'react';
+          import {
+              GoogleAuthProvider, createUserWithEmailAndPassword, onAuthStateChanged,
+                signInWithCredential, signInWithEmailAndPassword, signInWithPopup, signOut, type User,
+          } from 'firebase/auth';
+          import {
+              addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
+          } from 'firebase/firestore';
+          import { auth, db, googleProvider } from '../services/firebase';
+          import { isAdminEmail, isNativeAndroid, nativeGoogleSignIn, nativeGoogleSignOut } from '../services/capacitor';
+          import type {
+              AppFeedback, AppSettings, Booking, BookingStatus, Coupon, ExtraChargeItem, PartnerProfile,
+                PaymentMethod, UserProfile, UserRole,
+          } from '../types';
 
-export const DEFAULT_APP_SETTINGS: AppSettings = {
-    supportPhone: '+91 90000 00000',
-      whatsappNumber: '919000000000',
-        supportEmail: 'eevanventures@gmail.com',
-          upiId: 'needzo@upi',
-            bannerNotice: 'Flat ₹50 OFF on 1st booking! Use code: NEEDZO50',
-};
+          export const DEFAULT_APP_SETTINGS: AppSettings = {
+              supportPhone: '+91 90000 00000',
+                whatsappNumber: '919000000000',
+                  supportEmail: 'eevanventures@gmail.com',
+                    upiId: 'needzo@upi',
+                      bannerNotice: 'Flat ₹50 OFF on 1st booking! Use code: NEEDZO50',
+          };
 
-export const DEFAULT_COUPONS: Coupon[] = [
-    {
-          id: 'default-needzo50',
-              code: 'NEEDZO50',
-                  discountAmount: 50,
-                      minOrderAmount: 149,
-                          active: true,
-                              description: 'Flat ₹50 off on services ₹149+',
-                                  createdAtMs: 1700000000000,
-    },
-];
+          export const DEFAULT_COUPONS: Coupon[] = [
+              {
+                    id: 'default-needzo50',
+                        code: 'NEEDZO50',
+                            discountAmount: 50,
+                                minOrderAmount: 149,
+                                    active: true,
+                                        description: 'Flat ₹50 off on services ₹149+',
+                                            createdAtMs: 1700000000000,
+              },
+          ];
 
-interface CompleteProfileInput {
-    role: UserRole; name: string; phone: string;
-      defaultCity: string; defaultLocality: string; defaultPinCode?: string; defaultAddress: string;
-}
+          interface CompleteProfileInput {
+              role: UserRole; name: string; phone: string;
+                defaultCity: string; defaultLocality: string; defaultPinCode?: string; defaultAddress: string;
+          }
 
-export interface AdminSnapshot {
-    users: UserProfile[];
-      partners: PartnerProfile[];
-        bookings: Booking[];
-          feedbacks: AppFeedback[];
-            coupons: Coupon[];
-}
+          export interface AdminSnapshot {
+              users: UserProfile[];
+                partners: PartnerProfile[];
+                  bookings: Booking[];
+                    feedbacks: AppFeedback[];
+                      coupons: Coupon[];
+          }
 
-interface AppContextValue {
-    firebaseUser: User | null;
-      authLoading: boolean;
-        isAdmin: boolean;
-          userProfile: UserProfile | null;
-            partnerProfile: PartnerProfile | null;
-              appSettings: AppSettings;
-                coupons: Coupon[];
-                  selectedCity: string;
-                    selectedLocality: string;
-                      selectedPinCode: string;
-                        bookings: Booking[];
-                          setSelectedCity: (city: string) => void;
-                            setSelectedLocality: (loc: string) => void;
-                              setSelectedPinCode: (pin: string) => void;
-                                signInWithGoogle: () => Promise<void>;
-                                  signInWithEmail: (email: string, password: string) => Promise<void>;
-                                    signUpWithEmail: (email: string, password: string) => Promise<void>;
-                                      completeUserProfile: (data: CompleteProfileInput) => Promise<void>;
-                                        updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
-                                          savePartnerProfile: (data: Omit<PartnerProfile, 'uid' | 'isOnline' | 'isRegistered' | 'createdAtMs'>) => Promise<void>;
-                                            togglePartnerOnline: () => Promise<void>;
-                                              createBooking: (input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>) => Promise<Booking>;
-                                                acceptBooking: (bookingId: string) => Promise<void>;
-                                                  updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
-                                                    completeBooking: (bookingId: string, finalAmount: number, workNote?: string) => Promise<void>;
-                                                      markBookingPaid: (bookingId: string, method: PaymentMethod) => Promise<void>;
-                                                        rateBooking: (bookingId: string, rating: number, review: string) => Promise<void>;
-                                                          submitFeedback: (rating: number, message: string) => Promise<void>;
-                                                            updateAppSettings: (next: AppSettings) => Promise<void>;
-                                                              togglePartnerVerified: (partnerUid: string, nextVal: boolean) => Promise<void>;
-                                                                saveCoupon: (input: Omit<Coupon, 'id' | 'createdAtMs'>) => Promise<void>;
-                                                                  toggleCouponActive: (couponId: string, active: boolean) => Promise<void>;
-                                                                    loadAdminSnapshot: () => Promise<AdminSnapshot>;
-                                                                      signOutUser: () => Promise<void>;
-}
+          interface AppContextValue {
+              firebaseUser: User | null;
+                authLoading: boolean;
+                  isAdmin: boolean;
+                    userProfile: UserProfile | null;
+                      partnerProfile: PartnerProfile | null;
+                        appSettings: AppSettings;
+                          coupons: Coupon[];
+                            selectedCity: string;
+                              selectedLocality: string;
+                                selectedPinCode: string;
+                                  bookings: Booking[];
+                                    setSelectedCity: (city: string) => void;
+                                      setSelectedLocality: (loc: string) => void;
+                                        setSelectedPinCode: (pin: string) => void;
+                                          signInWithGoogle: () => Promise<void>;
+                                            signInWithEmail: (email: string, password: string) => Promise<void>;
+                                              signUpWithEmail: (email: string, password: string) => Promise<void>;
+                                                completeUserProfile: (data: CompleteProfileInput) => Promise<void>;
+                                                  updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
+                                                    savePartnerProfile: (data: Omit<PartnerProfile, 'uid' | 'isOnline' | 'isRegistered' | 'createdAtMs'>) => Promise<void>;
+                                                      togglePartnerOnline: () => Promise<void>;
+                                                        createBooking: (input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>) => Promise<Booking>;
+                                                          acceptBooking: (bookingId: string) => Promise<void>;
+                                                            updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+                                                              completeBooking: (bookingId: string, finalAmount: number, workNote?: string, extraCharges?: ExtraChargeItem[]) => Promise<void>;
+                                                                markBookingPaid: (bookingId: string, method: PaymentMethod) => Promise<void>;
+                                                                  rateBooking: (bookingId: string, rating: number, review: string) => Promise<void>;
+                                                                    submitFeedback: (rating: number, message: string) => Promise<void>;
+                                                                      updateAppSettings: (next: AppSettings) => Promise<void>;
+                                                                        togglePartnerVerified: (partnerUid: string, nextVal: boolean) => Promise<void>;
+                                                                          saveCoupon: (input: Omit<Coupon, 'id' | 'createdAtMs'>) => Promise<void>;
+                                                                            toggleCouponActive: (couponId: string, active: boolean) => Promise<void>;
+                                                                              loadAdminSnapshot: () => Promise<AdminSnapshot>;
+                                                                                signOutUser: () => Promise<void>;
+          }
 
-const AppContext = createContext<AppContextValue | null>(null);
+          const AppContext = createContext<AppContextValue | null>(null);
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-      const [authLoading, setAuthLoading] = useState(true);
-        const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-          const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
-            const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
-              const [coupons, setCoupons] = useState<Coupon[]>(DEFAULT_COUPONS);
-                const [selectedCity, setSelectedCity] = useState('Bhopal');
-                  const [selectedLocality, setSelectedLocality] = useState('Arera Colony');
-                    const [selectedPinCode, setSelectedPinCode] = useState('');
-                      const [bookings, setBookings] = useState<Booking[]>([]);
+          export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+              const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+                const [authLoading, setAuthLoading] = useState(true);
+                  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+                    const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
+                      const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+                        const [coupons, setCoupons] = useState<Coupon[]>(DEFAULT_COUPONS);
+                          const [selectedCity, setSelectedCity] = useState('Bhopal');
+                            const [selectedLocality, setSelectedLocality] = useState('Arera Colony');
+                              const [selectedPinCode, setSelectedPinCode] = useState('');
+                                const [bookings, setBookings] = useState<Booking[]>([]);
 
-                        useEffect(() => {
-                              if (!db) return;
-                                  const u1 = onSnapshot(doc(db, 'settings', 'appConfig'),
-                                        (snap) => { if (snap.exists()) setAppSettings({ ...DEFAULT_APP_SETTINGS, ...(snap.data() as Partial<AppSettings>) }); },
-                                              () => { /* fallback */ }
-                                                  );
-                                                      const u2 = onSnapshot(collection(db, 'coupons'),
-                                                            (snap) => {
-                                                                      if (!snap.empty) {
-                                                                                  setCoupons(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Coupon, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs));
-                                                                      } else setCoupons(DEFAULT_COUPONS);
-                                                            },
-                                                                  () => { /* fallback */ }
-                                                      );
-                                                          return () => { u1(); u2(); };
-                        }, []);
+                                  useEffect(() => {
+                                        if (!db) return;
+                                            const u1 = onSnapshot(doc(db, 'settings', 'appConfig'),
+                                                  (snap) => { if (snap.exists()) setAppSettings({ ...DEFAULT_APP_SETTINGS, ...(snap.data() as Partial<AppSettings>) }); },
+                                                        () => { /* fallback */ }
+                                                            );
+                                                                const u2 = onSnapshot(collection(db, 'coupons'),
+                                                                      (snap) => {
+                                                                                if (!snap.empty) {
+                                                                                              setCoupons(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Coupon, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs));
+                                                                                } else setCoupons(DEFAULT_COUPONS);
+                                                                      },
+                                                                            () => { /* fallback */ }
+                                                                );
+                                                                    return () => { u1(); u2(); };
+                                  }, []);
 
-                          useEffect(() => {
-                                if (!auth || !db) { setAuthLoading(false); return; }
-                                    const firestore = db;
-                                        return onAuthStateChanged(auth, async (user) => {
-                                                setFirebaseUser(user);
-                                                      if (!user) { setUserProfile(null); setPartnerProfile(null); setBookings([]); setAuthLoading(false); return; }
-                                                            try {
-                                                                      const userSnap = await getDoc(doc(firestore, 'users', user.uid));
-                                                                              if (userSnap.exists()) {
-                                                                                          const prof = userSnap.data() as UserProfile;
-                                                                                                    const normalizedProf: UserProfile = { ...prof, defaultCity: prof.defaultCity || 'Bhopal' };
-                                                                                                              setUserProfile(normalizedProf);
-                                                                                                                        setSelectedCity(normalizedProf.defaultCity);
-                                                                                                                                  if (normalizedProf.defaultLocality) setSelectedLocality(normalizedProf.defaultLocality);
-                                                                                                                                            if (normalizedProf.defaultPinCode) setSelectedPinCode(normalizedProf.defaultPinCode);
-                                                                                                                                                      if (normalizedProf.role === 'partner') {
-                                                                                                                                                                    const pSnap = await getDoc(doc(firestore, 'partners', user.uid));
-                                                                                                                                                                                if (pSnap.exists()) {
-                                                                                                                                                                                                const pData = pSnap.data() as PartnerProfile;
-                                                                                                                                                                                                              setPartnerProfile({ ...pData, city: pData.city || normalizedProf.defaultCity });
-                                                                                                                                                                                } else setPartnerProfile(null);
-                                                                                                                                                      } else setPartnerProfile(null);
-                                                                              } else { setUserProfile(null); setPartnerProfile(null); }
-                                                            } catch { setUserProfile(null); } finally { setAuthLoading(false); }
-                                        });
-                          }, []);
+                                    useEffect(() => {
+                                            if (!auth || !db) { setAuthLoading(false); return; }
+                                                const firestore = db;
+                                                    return onAuthStateChanged(auth, async (user) => {
+                                                              setFirebaseUser(user);
+                                                                    if (!user) { setUserProfile(null); setPartnerProfile(null); setBookings([]); setAuthLoading(false); return; }
+                                                                          try {
+                                                                                    const userSnap = await getDoc(doc(firestore, 'users', user.uid));
+                                                                                            if (userSnap.exists()) {
+                                                                                                          const prof = userSnap.data() as UserProfile;
+                                                                                                                    const normalizedProf: UserProfile = { ...prof, defaultCity: prof.defaultCity || 'Bhopal' };
+                                                                                                                              setUserProfile(normalizedProf);
+                                                                                                                                        setSelectedCity(normalizedProf.defaultCity);
+                                                                                                                                                  if (normalizedProf.defaultLocality) setSelectedLocality(normalizedProf.defaultLocality);
+                                                                                                                                                            if (normalizedProf.defaultPinCode) setSelectedPinCode(normalizedProf.defaultPinCode);
+                                                                                                                                                                      if (normalizedProf.role === 'partner') {
+                                                                                                                                                                                    const pSnap = await getDoc(doc(firestore, 'partners', user.uid));
+                                                                                                                                                                                                if (pSnap.exists()) {
+                                                                                                                                                                                                                  const pData = pSnap.data() as PartnerProfile;
+                                                                                                                                                                                                                                setPartnerProfile({ ...pData, city: pData.city || normalizedProf.defaultCity });
+                                                                                                                                                                                                } else setPartnerProfile(null);
+                                                                                                                                                                      } else setPartnerProfile(null);
+                                                                                            } else { setUserProfile(null); setPartnerProfile(null); }
+                                                                          } catch { setUserProfile(null); } finally { setAuthLoading(false); }
+                                                    });
+                                    }, []);
 
-                            useEffect(() => {
-                                  if (!db || !firebaseUser || !userProfile) { setBookings([]); return; }
-                                      const firestore = db;
-                                          if (userProfile.role === 'customer') {
-                                                  const q = query(collection(firestore, 'bookings'), where('customerId', '==', firebaseUser.uid));
-                                                        return onSnapshot(q, (snap) => {
-                                                                  setBookings(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs));
-                                                        });
-                                          }
-                                              let pendingList: Booking[] = [];
-                                                  let mineList: Booking[] = [];
-                                                      const syncMerged = () => {
-                                                              const map = new Map<string, Booking>();
-                                                                    for (const b of pendingList) map.set(b.id, b);
-                                                                          for (const b of mineList) map.set(b.id, b);
-                                                                                setBookings(Array.from(map.values()).sort((a, b) => (a.isEmergency !== b.isEmergency ? (a.isEmergency ? -1 : 1) : b.createdAtMs - a.createdAtMs)));
-                                                      };
-                                                          const u1 = onSnapshot(query(collection(firestore, 'bookings'), where('status', '==', 'pending')), (snap) => {
-                                                                  pendingList = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })); syncMerged();
-                                                          });
-                                                              const u2 = onSnapshot(query(collection(firestore, 'bookings'), where('partnerId', '==', firebaseUser.uid)), (snap) => {
-                                                                      mineList = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })); syncMerged();
-                                                              });
-                                                                  return () => { u1(); u2(); };
-                            }, [firebaseUser, userProfile]);
+                                      useEffect(() => {
+                                            if (!db || !firebaseUser || !userProfile) { setBookings([]); return; }
+                                                const firestore = db;
+                                                    if (userProfile.role === 'customer') {
+                                                              const q = query(collection(firestore, 'bookings'), where('customerId', '==', firebaseUser.uid));
+                                                                    return onSnapshot(q, (snap) => {
+                                                                                setBookings(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs));
+                                                                    });
+                                                    }
+                                                        let pendingList: Booking[] = [];
+                                                            let mineList: Booking[] = [];
+                                                                const syncMerged = () => {
+                                                                          const map = new Map<string, Booking>();
+                                                                                for (const b of pendingList) map.set(b.id, b);
+                                                                                      for (const b of mineList) map.set(b.id, b);
+                                                                                            setBookings(Array.from(map.values()).sort((a, b) => (a.isEmergency !== b.isEmergency ? (a.isEmergency ? -1 : 1) : b.createdAtMs - a.createdAtMs)));
+                                                                };
+                                                                    const u1 = onSnapshot(query(collection(firestore, 'bookings'), where('status', '==', 'pending')), (snap) => {
+                                                                              pendingList = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })); syncMerged();
+                                                                    });
+                                                                        const u2 = onSnapshot(query(collection(firestore, 'bookings'), where('partnerId', '==', firebaseUser.uid)), (snap) => {
+                                                                                  mineList = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })); syncMerged();
+                                                                        });
+                                                                            return () => { u1(); u2(); };
+                                      }, [firebaseUser, userProfile]);
 
-                              const signInWithGoogle = async () => {
-                                    if (!auth) throw new Error('Firebase not ready.');
-                                        if (isNativeAndroid()) {
-                                                const idToken = await nativeGoogleSignIn();
-                                                      const cred = GoogleAuthProvider.credential(idToken);
-                                                            await signInWithCredential(auth, cred);
-                                                                  return;
-                                        }
-                                            googleProvider.setCustomParameters({ prompt: 'select_account' });
-                                                await signInWithPopup(auth, googleProvider);
-                              };
-
-                                const signInWithEmail = async (email: string, password: string) => { if (!auth) throw new Error('Firebase not ready.'); await signInWithEmailAndPassword(auth, email, password); };
-                                  const signUpWithEmail = async (email: string, password: string) => { if (!auth) throw new Error('Firebase not ready.'); await createUserWithEmailAndPassword(auth, email, password); };
-
-                                    const completeUserProfile = async (data: CompleteProfileInput) => {
-                                          if (!db || !firebaseUser) throw new Error('Not signed in.');
-                                              const profile: UserProfile = {
-                                                      uid: firebaseUser.uid, email: firebaseUser.email || '', role: data.role, name: data.name, phone: data.phone,
-                                                            defaultCity: data.defaultCity, defaultLocality: data.defaultLocality, defaultPinCode: data.defaultPinCode || '',
-                                                                  defaultAddress: data.defaultAddress, createdAtMs: Date.now(),
-                                              };
-                                                  await setDoc(doc(db, 'users', firebaseUser.uid), profile);
-                                                      setUserProfile(profile); setSelectedCity(data.defaultCity); setSelectedLocality(data.defaultLocality);
-                                                          if (data.defaultPinCode) setSelectedPinCode(data.defaultPinCode);
-                                    };
-
-                                      const updateUserProfile = async (updates: Partial<UserProfile>) => {
-                                            if (!db || !firebaseUser || !userProfile) return;
-                                                await updateDoc(doc(db, 'users', firebaseUser.uid), updates);
-                                                    setUserProfile({ ...userProfile, ...updates });
-                                      };
-
-                                        const savePartnerProfile = async (data: Omit<PartnerProfile, 'uid' | 'isOnline' | 'isRegistered' | 'createdAtMs'>) => {
-                                              if (!db || !firebaseUser) throw new Error('Not signed in.');
-                                                  const next: PartnerProfile = {
-                                                          uid: firebaseUser.uid, ...data, isOnline: partnerProfile?.isOnline ?? true, isRegistered: true,
-                                                                isVerified: partnerProfile?.isVerified ?? false,
-                                                                      kycDocType: data.kycDocType ?? partnerProfile?.kycDocType ?? '',
-                                                                            kycDocUrl: data.kycDocUrl ?? partnerProfile?.kycDocUrl ?? '',
-                                                                                  createdAtMs: partnerProfile?.createdAtMs ?? Date.now(),
-                                                  };
-                                                      await setDoc(doc(db, 'partners', firebaseUser.uid), next, { merge: true });
-                                                          setPartnerProfile(next);
+                                        const signInWithGoogle = async () => {
+                                                if (!auth) throw new Error('Firebase not ready.');
+                                                    if (isNativeAndroid()) {
+                                                              const idToken = await nativeGoogleSignIn();
+                                                                    const cred = GoogleAuthProvider.credential(idToken);
+                                                                          await signInWithCredential(auth, cred);
+                                                                                return;
+                                                    }
+                                                        googleProvider.setCustomParameters({ prompt: 'select_account' });
+                                                            await signInWithPopup(auth, googleProvider);
                                         };
 
-                                          const togglePartnerOnline = async () => {
-                                                if (!db || !firebaseUser || !partnerProfile) return;
-                                                    const nextVal = !partnerProfile.isOnline;
-                                                        await updateDoc(doc(db, 'partners', firebaseUser.uid), { isOnline: nextVal });
-                                                            setPartnerProfile({ ...partnerProfile, isOnline: nextVal });
-                                          };
+                                          const signInWithEmail = async (email: string, password: string) => { if (!auth) throw new Error('Firebase not ready.'); await signInWithEmailAndPassword(auth, email, password); };
+                                            const signUpWithEmail = async (email: string, password: string) => { if (!auth) throw new Error('Firebase not ready.'); await createUserWithEmailAndPassword(auth, email, password); };
 
-                                            const createBooking = async (input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>): Promise<Booking> => {
-                                                  if (!db) throw new Error('Firestore not ready.');
-                                                      const startOtp = String(Math.floor(1000 + Math.random() * 9000));
-                                                          const raw = { ...input, status: 'pending' as BookingStatus, startOtp, paymentStatus: 'unpaid' as const, createdAtMs: Date.now() };
-                                                              const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) as Omit<Booking, 'id'>;
-                                                                  const docRef = await addDoc(collection(db, 'bookings'), payload);
-                                                                      return { id: docRef.id, ...payload };
-                                            };
-
-                                              const acceptBooking = async (bookingId: string) => {
-                                                    if (!db || !firebaseUser || !partnerProfile) return;
-                                                        await updateDoc(doc(db, 'bookings', bookingId), {
-                                                                status: 'accepted', partnerId: firebaseUser.uid, partnerName: partnerProfile.fullName, partnerPhone: partnerProfile.phone,
-                                                        });
+                                              const completeUserProfile = async (data: CompleteProfileInput) => {
+                                                    if (!db || !firebaseUser) throw new Error('Not signed in.');
+                                                        const profile: UserProfile = {
+                                                                  uid: firebaseUser.uid, email: firebaseUser.email || '', role: data.role, name: data.name, phone: data.phone,
+                                                                        defaultCity: data.defaultCity, defaultLocality: data.defaultLocality, defaultPinCode: data.defaultPinCode || '',
+                                                                              defaultAddress: data.defaultAddress, createdAtMs: Date.now(),
+                                                        };
+                                                            await setDoc(doc(db, 'users', firebaseUser.uid), profile);
+                                                                setUserProfile(profile); setSelectedCity(data.defaultCity); setSelectedLocality(data.defaultLocality);
+                                                                    if (data.defaultPinCode) setSelectedPinCode(data.defaultPinCode);
                                               };
 
-                                                const updateBookingStatus = async (bookingId: string, status: BookingStatus) => {
-                                                      if (!db) return;
-                                                          await updateDoc(doc(db, 'bookings', bookingId), { status });
+                                                const updateUserProfile = async (updates: Partial<UserProfile>) => {
+                                                        if (!db || !firebaseUser || !userProfile) return;
+                                                            await updateDoc(doc(db, 'users', firebaseUser.uid), updates);
+                                                                setUserProfile({ ...userProfile, ...updates });
                                                 };
 
-                                                  const completeBooking = async (bookingId: string, finalAmount: number, workNote?: string) => {
-                                                        if (!db) return;
-                                                            await updateDoc(doc(db, 'bookings', bookingId), { status: 'completed', finalAmount, workNote: workNote || '' });
+                                                  const savePartnerProfile = async (data: Omit<PartnerProfile, 'uid' | 'isOnline' | 'isRegistered' | 'createdAtMs'>) => {
+                                                        if (!db || !firebaseUser) throw new Error('Not signed in.');
+                                                            const next: PartnerProfile = {
+                                                                      uid: firebaseUser.uid, ...data, isOnline: partnerProfile?.isOnline ?? true, isRegistered: true,
+                                                                            isVerified: partnerProfile?.isVerified ?? false,
+                                                                                  kycDocType: data.kycDocType ?? partnerProfile?.kycDocType ?? '',
+                                                                                        kycDocUrl: data.kycDocUrl ?? partnerProfile?.kycDocUrl ?? '',
+                                                                                              createdAtMs: partnerProfile?.createdAtMs ?? Date.now(),
+                                                            };
+                                                                await setDoc(doc(db, 'partners', firebaseUser.uid), next, { merge: true });
+                                                                    setPartnerProfile(next);
                                                   };
 
-                                                    const markBookingPaid = async (bookingId: string, method: PaymentMethod) => {
-                                                          if (!db) return;
-                                                              await updateDoc(doc(db, 'bookings', bookingId), {
-                                                                      paymentStatus: 'paid',
-                                                                            paymentMethod: method,
-                                                                                  paidAtMs: Date.now(),
-                                                                                        transactionRef: `NDZ${Date.now().toString().slice(-6)}`,
-                                                              });
+                                                    const togglePartnerOnline = async () => {
+                                                            if (!db || !firebaseUser || !partnerProfile) return;
+                                                                const nextVal = !partnerProfile.isOnline;
+                                                                    await updateDoc(doc(db, 'partners', firebaseUser.uid), { isOnline: nextVal });
+                                                                        setPartnerProfile({ ...partnerProfile, isOnline: nextVal });
                                                     };
 
-                                                      const rateBooking = async (bookingId: string, rating: number, review: string) => {
-                                                            if (!db) return;
-                                                                await updateDoc(doc(db, 'bookings', bookingId), { rating, review: review.trim(), ratedAtMs: Date.now() });
+                                                      const createBooking = async (input: Omit<Booking, 'id' | 'status' | 'createdAtMs'>): Promise<Booking> => {
+                                                            if (!db) throw new Error('Firestore not ready.');
+                                                                const startOtp = String(Math.floor(1000 + Math.random() * 9000));
+                                                                    const raw = { ...input, status: 'pending' as BookingStatus, startOtp, paymentStatus: 'unpaid' as const, createdAtMs: Date.now() };
+                                                                        const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) as Omit<Booking, 'id'>;
+                                                                            const docRef = await addDoc(collection(db, 'bookings'), payload);
+                                                                                return { id: docRef.id, ...payload };
                                                       };
 
-                                                        const submitFeedback = async (rating: number, message: string) => {
-                                                              if (!db || !firebaseUser || !userProfile) return;
-                                                                  await addDoc(collection(db, 'feedback'), {
-                                                                          uid: firebaseUser.uid, name: userProfile.name, email: userProfile.email,
-                                                                                role: userProfile.role, rating, message: message.trim(), createdAtMs: Date.now(),
-                                                                  });
+                                                        const acceptBooking = async (bookingId: string) => {
+                                                                if (!db || !firebaseUser || !partnerProfile) return;
+                                                                    await updateDoc(doc(db, 'bookings', bookingId), {
+                                                                              status: 'accepted', partnerId: firebaseUser.uid, partnerName: partnerProfile.fullName, partnerPhone: partnerProfile.phone,
+                                                                    });
                                                         };
 
-                                                          const updateAppSettings = async (next: AppSettings) => {
+                                                          const updateBookingStatus = async (bookingId: string, status: BookingStatus) => {
                                                                 if (!db) return;
-                                                                    const payload = { ...next, updatedAtMs: Date.now() };
-                                                                        await setDoc(doc(db, 'settings', 'appConfig'), payload, { merge: true });
-                                                                            setAppSettings(payload);
+                                                                    await updateDoc(doc(db, 'bookings', bookingId), { status });
                                                           };
 
-                                                            const togglePartnerVerified = async (partnerUid: string, nextVal: boolean) => {
-                                                                  if (!db) return;
-                                                                      await updateDoc(doc(db, 'partners', partnerUid), { isVerified: nextVal });
+                                                            const completeBooking = async (bookingId: string, finalAmount: number, workNote?: string, extraCharges?: ExtraChargeItem[]) => {
+                                                                    if (!db) return;
+                                                                        await updateDoc(doc(db, 'bookings', bookingId), {
+                                                                                  status: 'completed',
+                                                                                        finalAmount,
+                                                                                              workNote: workNote || '',
+                                                                                                    extraCharges: extraCharges || [],
+                                                                        });
                                                             };
 
-                                                              const saveCoupon = async (input: Omit<Coupon, 'id' | 'createdAtMs'>) => {
+                                                              const markBookingPaid = async (bookingId: string, method: PaymentMethod) => {
                                                                     if (!db) return;
-                                                                        const code = input.code.trim().toUpperCase();
-                                                                            await setDoc(doc(db, 'coupons', code), { ...input, code, createdAtMs: Date.now() }, { merge: true });
+                                                                        await updateDoc(doc(db, 'bookings', bookingId), {
+                                                                                  paymentStatus: 'paid',
+                                                                                        paymentMethod: method,
+                                                                                              paidAtMs: Date.now(),
+                                                                                                    transactionRef: `NDZ${Date.now().toString().slice(-6)}`,
+                                                                        });
                                                               };
 
-                                                                const toggleCouponActive = async (couponId: string, active: boolean) => {
-                                                                      if (!db) return;
-                                                                          await updateDoc(doc(db, 'coupons', couponId), { active });
+                                                                const rateBooking = async (bookingId: string, rating: number, review: string) => {
+                                                                        if (!db) return;
+                                                                            await updateDoc(doc(db, 'bookings', bookingId), { rating, review: review.trim(), ratedAtMs: Date.now() });
                                                                 };
 
-                                                                  const loadAdminSnapshot = async (): Promise<AdminSnapshot> => {
-                                                                        if (!db) throw new Error('Firestore not ready.');
-                                                                            const [uSnap, pSnap, bSnap] = await Promise.all([
-                                                                                    getDocs(collection(db, 'users')),
-                                                                                          getDocs(collection(db, 'partners')),
-                                                                                                getDocs(collection(db, 'bookings')),
-                                                                            ]);
-                                                                                let feedbacks: AppFeedback[] = [];
-                                                                                    try {
-                                                                                            const fSnap = await getDocs(collection(db, 'feedback'));
-                                                                                                  feedbacks = fSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AppFeedback, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs);
-                                                                                    } catch { feedbacks = []; }
-                                                                                        let adminCoupons: Coupon[] = DEFAULT_COUPONS;
-                                                                                            try {
-                                                                                                    const cSnap = await getDocs(collection(db, 'coupons'));
-                                                                                                          if (!cSnap.empty) {
-                                                                                                                    adminCoupons = cSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Coupon, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs);
-                                                                                                          }
-                                                                                            } catch { adminCoupons = DEFAULT_COUPONS; }
-                                                                                                return {
-                                                                                                        users: uSnap.docs.map((d) => d.data() as UserProfile).sort((a, b) => b.createdAtMs - a.createdAtMs),
-                                                                                                              partners: pSnap.docs.map((d) => d.data() as PartnerProfile).sort((a, b) => b.createdAtMs - a.createdAtMs),
-                                                                                                                    bookings: bSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs),
-                                                                                                                          feedbacks,
-                                                                                                                                coupons: adminCoupons,
-                                                                                                };
+                                                                  const submitFeedback = async (rating: number, message: string) => {
+                                                                        if (!db || !firebaseUser || !userProfile) return;
+                                                                            await addDoc(collection(db, 'feedback'), {
+                                                                                      uid: firebaseUser.uid, name: userProfile.name, email: userProfile.email,
+                                                                                            role: userProfile.role, rating, message: message.trim(), createdAtMs: Date.now(),
+                                                                            });
                                                                   };
 
-                                                                    const signOutUser = async () => {
-                                                                          if (isNativeAndroid()) await nativeGoogleSignOut();
-                                                                              if (auth) await signOut(auth);
+                                                                    const updateAppSettings = async (next: AppSettings) => {
+                                                                            if (!db) return;
+                                                                                const payload = { ...next, updatedAtMs: Date.now() };
+                                                                                    await setDoc(doc(db, 'settings', 'appConfig'), payload, { merge: true });
+                                                                                        setAppSettings(payload);
                                                                     };
-                                                                      const isAdmin = isAdminEmail(firebaseUser?.email);
 
-                                                                        return (
-                                                                              <AppContext.Provider value={{
-                                                                                      firebaseUser, authLoading, isAdmin, userProfile, partnerProfile, appSettings, coupons,
-                                                                                            selectedCity, selectedLocality, selectedPinCode, bookings,
-                                                                                                  setSelectedCity, setSelectedLocality, setSelectedPinCode,
-                                                                                                        signInWithGoogle, signInWithEmail, signUpWithEmail, completeUserProfile, updateUserProfile,
-                                                                                                              savePartnerProfile, togglePartnerOnline, createBooking, acceptBooking, updateBookingStatus,
-                                                                                                                    completeBooking, markBookingPaid, rateBooking, submitFeedback, updateAppSettings,
-                                                                                                                          togglePartnerVerified, saveCoupon, toggleCouponActive, loadAdminSnapshot, signOutUser,
-                                                                              }}>
-                                                                                    {children}
-                                                                                        </AppContext.Provider>
-                                                                        );
-};
+                                                                      const togglePartnerVerified = async (partnerUid: string, nextVal: boolean) => {
+                                                                            if (!db) return;
+                                                                                await updateDoc(doc(db, 'partners', partnerUid), { isVerified: nextVal });
+                                                                      };
 
-export function useApp(): AppContextValue {
-    const ctx = useContext(AppContext);
-      if (!ctx) throw new Error('useApp must be used inside AppProvider');
-        return ctx;
-}
+                                                                        const saveCoupon = async (input: Omit<Coupon, 'id' | 'createdAtMs'>) => {
+                                                                                if (!db) return;
+                                                                                    const code = input.code.trim().toUpperCase();
+                                                                                        await setDoc(doc(db, 'coupons', code), { ...input, code, createdAtMs: Date.now() }, { merge: true });
+                                                                        };
+
+                                                                          const toggleCouponActive = async (couponId: string, active: boolean) => {
+                                                                                if (!db) return;
+                                                                                    await updateDoc(doc(db, 'coupons', couponId), { active });
+                                                                          };
+
+                                                                            const loadAdminSnapshot = async (): Promise<AdminSnapshot> => {
+                                                                                    if (!db) throw new Error('Firestore not ready.');
+                                                                                        const [uSnap, pSnap, bSnap] = await Promise.all([
+                                                                                                  getDocs(collection(db, 'users')),
+                                                                                                        getDocs(collection(db, 'partners')),
+                                                                                                              getDocs(collection(db, 'bookings')),
+                                                                                        ]);
+                                                                                            let feedbacks: AppFeedback[] = [];
+                                                                                                try {
+                                                                                                          const fSnap = await getDocs(collection(db, 'feedback'));
+                                                                                                                feedbacks = fSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AppFeedback, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs);
+                                                                                                } catch { feedbacks = []; }
+                                                                                                    let adminCoupons: Coupon[] = DEFAULT_COUPONS;
+                                                                                                        try {
+                                                                                                                  const cSnap = await getDocs(collection(db, 'coupons'));
+                                                                                                                        if (!cSnap.empty) {
+                                                                                                                                    adminCoupons = cSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Coupon, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs);
+                                                                                                                        }
+                                                                                                        } catch { adminCoupons = DEFAULT_COUPONS; }
+                                                                                                            return {
+                                                                                                                      users: uSnap.docs.map((d) => d.data() as UserProfile).sort((a, b) => b.createdAtMs - a.createdAtMs),
+                                                                                                                            partners: pSnap.docs.map((d) => d.data() as PartnerProfile).sort((a, b) => b.createdAtMs - a.createdAtMs),
+                                                                                                                                  bookings: bSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })).sort((a, b) => b.createdAtMs - a.createdAtMs),
+                                                                                                                                        feedbacks,
+                                                                                                                                              coupons: adminCoupons,
+                                                                                                            };
+                                                                            };
+
+                                                                              const signOutUser = async () => {
+                                                                                    if (isNativeAndroid()) await nativeGoogleSignOut();
+                                                                                        if (auth) await signOut(auth);
+                                                                              };
+                                                                                const isAdmin = isAdminEmail(firebaseUser?.email);
+
+                                                                                  return (
+                                                                                        <AppContext.Provider value={{
+                                                                                                  firebaseUser, authLoading, isAdmin, userProfile, partnerProfile, appSettings, coupons,
+                                                                                                        selectedCity, selectedLocality, selectedPinCode, bookings,
+                                                                                                              setSelectedCity, setSelectedLocality, setSelectedPinCode,
+                                                                                                                    signInWithGoogle, signInWithEmail, signUpWithEmail, completeUserProfile, updateUserProfile,
+                                                                                                                          savePartnerProfile, togglePartnerOnline, createBooking, acceptBooking, updateBookingStatus,
+                                                                                                                                completeBooking, markBookingPaid, rateBooking, submitFeedback, updateAppSettings,
+                                                                                                                                      togglePartnerVerified, saveCoupon, toggleCouponActive, loadAdminSnapshot, signOutUser,
+                                                                                        }}>
+                                                                                              {children}
+                                                                                                  </AppContext.Provider>
+                                                                                  );
+          };
+
+          export function useApp(): AppContextValue {
+              const ctx = useContext(AppContext);
+                if (!ctx) throw new Error('useApp must be used inside AppProvider');
+                  return ctx;
+          }
